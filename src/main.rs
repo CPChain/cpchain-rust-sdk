@@ -2,6 +2,8 @@ pub use crate::cpc_web3::CPCWeb3;
 
 mod cpc_web3;
 mod transport;
+mod types;
+mod utils;
 
 #[tokio::main]
 async fn main() -> web3::Result<()> {

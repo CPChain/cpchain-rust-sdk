@@ -126,6 +126,7 @@ name = "cpchain-rust-sdk"
 version = "0.1.0"
 dependencies = [
  "headers",
+ "hex",
  "jsonrpc-core",
  "log",
  "reqwest",

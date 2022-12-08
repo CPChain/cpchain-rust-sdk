@@ -1,6 +1,6 @@
-use web3::{Error, Web3, types::{BlockId, Transaction, Block, H256}};
+use web3::{Error, Web3, types::{BlockId, Transaction, Block, H256, U256}};
 
-use crate::transport::CPCHttp;
+use crate::{transport::CPCHttp, types::Address};
 
 pub struct CPCWeb3 {
     web3: Web3<CPCHttp>
@@ -26,6 +26,11 @@ impl CPCWeb3 {
 
     pub async fn block_with_txs(&self, number: u32) -> Result<Option<Block<Transaction>>, Error> {
         self.web3.eth().block_with_txs(BlockId::Number(number.into())).await
+    }
+
+    pub async fn balance(&self, address: Address) -> Result<U256, Error> {
+        let balance = self.web3.eth().balance(address.h160, None).await?;
+        Ok(balance)
     }
 }
 
@@ -80,4 +85,12 @@ mod tests {
         let block = web3.block(100).await.unwrap().unwrap();
         assert!(block.number.unwrap().as_u32() == 100);
     }
+
+    #[tokio::test]
+    async fn test_get_balance() {
+        let web3 = CPCWeb3::new("https://civilian.cpchain.io").unwrap();
+        let balance = web3.balance(Address::from_str("0x1455D180E3adE94ebD9cC324D22a9065d1F5F575").unwrap()).await.unwrap();
+        println!("{:?}", balance.as_u128());
+    }
+
 }
