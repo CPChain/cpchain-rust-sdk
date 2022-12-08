@@ -6,6 +6,11 @@ edition = "2021"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
+headers = "0.3.8"
+jsonrpc-core = "18.0.0"
+log = "0.4.17"
+reqwest = "0.11.13"
+serde_json = "1.0.89"
 tokio = "1.21.2"
+url = "2.3.1"
 web3 = "0.18.0"
-cpc={version="0.1.0", path="./cpc"}
