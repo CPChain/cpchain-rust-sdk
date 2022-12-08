@@ -1,2 +1,2 @@
-mod cpc;
-pub use cpc::CPCWeb3;
+mod cpc_web3;
+pub use cpc_web3::CPCWeb3;

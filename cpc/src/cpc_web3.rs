@@ -17,3 +17,16 @@ impl CPCWeb3 {
         Ok(current_block.as_u64())
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[tokio::test]
+    async fn test_block_number() {
+        let web3 = CPCWeb3::new("https://civilian.cpchain.io").unwrap();
+        let number = web3.block_number().await.unwrap();
+        println!("{:?}", number);
+        assert!(number > 0);
+    }
+}
