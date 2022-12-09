@@ -2,7 +2,7 @@ pub use crate::cpc_web3::CPCWeb3;
 
 mod cpc_web3;
 mod transport;
-mod types;
+mod address;
 mod utils;
 pub mod accounts;
 

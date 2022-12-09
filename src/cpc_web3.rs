@@ -1,6 +1,6 @@
 use web3::{Error, Web3, types::{BlockId, Transaction, Block, H256, U256}};
 
-use crate::{transport::CPCHttp, types::Address};
+use crate::{transport::CPCHttp, address::Address};
 
 pub struct CPCWeb3 {
     web3: Web3<CPCHttp>
