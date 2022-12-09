@@ -4,6 +4,7 @@ mod cpc_web3;
 mod transport;
 mod types;
 mod utils;
+pub mod accounts;
 
 #[tokio::main]
 async fn main() -> web3::Result<()> {
