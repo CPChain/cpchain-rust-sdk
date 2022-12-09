@@ -3,7 +3,14 @@ use web3::{signing, types::Address as Web3Address};
 
 use crate::{address::Address, utils};
 
-
+/// Account
+/// 
+/// Example
+/// ```rust
+/// let account = Account::random();
+/// // Get addres
+/// println!("{}", account.address.to_checksum());
+/// ```
 #[derive(Debug, Clone)]
 pub struct Account {
     pub secret_key: SecretKey,
