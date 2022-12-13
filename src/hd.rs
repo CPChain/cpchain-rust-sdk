@@ -1,4 +1,4 @@
-use bip39::{Language, Mnemonic, Seed};
+use bip39::{Language, Mnemonic, Seed, MnemonicType};
 use hex_literal::hex;
 use hmac::{Hmac, Mac};
 use num_bigint::BigUint;
@@ -19,11 +19,9 @@ const HARDENED_BIT: u64 = 0x80000000;
 /// BIP39: https://github.com/bitcoin/bips/blob/master/bip-0039.mediawiki
 /// https://stevenocean.github.io/2018/09/23/generate-hd-wallet-by-bip39.html
 #[derive(Debug, Clone)]
-#[allow(dead_code)]
 pub struct HDNode {
     pub private_key: Option<[u8; 32]>,
     pub public_key: [u8; 33], // beginning with 0x02 or 0x03 to denote the sign of the missing Y component.
-    address: String,
 
     pub mnemonic: Option<Mnemonic>,
     pub path: String,
@@ -37,9 +35,11 @@ pub struct HDNode {
 impl HDNode {
     pub fn new() -> Result<Self, Box<dyn std::error::Error>> {
         // 创建助记词
-        // let mnemonic = Mnemonic::new(MnemonicType::Words12, Language::English);
-        let mnemonic = Mnemonic::from_phrase("office picture sausage either disease ordinary comic loan unknown entire winner twice", Language::English)?;
-        // Create seed
+        let mnemonic = Mnemonic::new(MnemonicType::Words12, Language::English);
+        HDNode::from_mnemonic(&mnemonic)
+    }
+
+    pub fn from_mnemonic(mnemonic: &Mnemonic) -> Result<HDNode, Box<dyn std::error::Error>> {
         let seed = Seed::new_cpc(&mnemonic, "");
         let bytes = compute_hmac(MASTER_SECRET.as_bytes(), &seed.as_bytes())?;
         let mut master_private_key: [u8; 32] = [0; 32];
@@ -71,8 +71,14 @@ impl HDNode {
             0,
             0,
             "m".to_string(),
-            Some(mnemonic),
+            Some(mnemonic.clone()),
         ))
+    }
+
+    pub fn from_phrase(phrase: &str) -> Result<HDNode, Box<dyn std::error::Error>> {
+        // Create seed
+        let mnemonic = Mnemonic::from_phrase(phrase, Language::English)?;
+        HDNode::from_mnemonic(&mnemonic)
     }
 
     fn new_hdnode(
@@ -90,7 +96,6 @@ impl HDNode {
             chain_code,
             index,
             depth,
-            address: String::new(),
             mnemonic,
             path,
         }
@@ -193,7 +198,6 @@ impl HDNode {
         let r2 = Regex::new(r"^\d+$")?;
         let mut node = self.clone();
         for elem in components.iter() {
-            println!("-->>{} {} {}", node.depth, hex::encode(&node.private_key.unwrap()), node.path);
             if r1.is_match(elem) {
                 let index = elem[..elem.len() - 1].to_string().parse::<u64>()?;
                 if index > HARDENED_BIT {
@@ -232,6 +236,13 @@ mod tests {
         let pk = hex::encode(&node.private_key.unwrap());
         println!("{}", node.mnemonic.unwrap().phrase());
         println!("{}", pk);
+    }
+
+    #[test]
+    fn test_from_phrase() {
+        let node = HDNode::from_phrase("office picture sausage either disease ordinary comic loan unknown entire winner twice").unwrap().derive_path("m/44'/337'/0'/0/0").unwrap();
+        let expected = hex!("31e880225ba9103ed82b0d404518e303210d7fc0ecb6091be440112d59cda185");
+        assert_eq!(node.private_key.unwrap(), expected)
     }
 
     #[test]
