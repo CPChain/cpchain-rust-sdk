@@ -36,9 +36,10 @@ struct HDNode {
 impl HDNode {
     pub fn new() -> Result<Self, Box<dyn std::error::Error>> {
         // 创建助记词
-        let mnemonic = Mnemonic::new(MnemonicType::Words12, Language::English);
+        // let mnemonic = Mnemonic::new(MnemonicType::Words12, Language::English);
+        let mnemonic = Mnemonic::from_phrase("office picture sausage either disease ordinary comic loan unknown entire winner twice", Language::English)?;
         // Create seed
-        let seed = Seed::new(&mnemonic, "");
+        let seed = Seed::new_cpc(&mnemonic, "");
         let bytes = compute_hmac(MASTER_SECRET.as_bytes(), &seed.as_bytes())?;
         let mut master_private_key: [u8; 32] = [0; 32];
         bytes[0..32]
@@ -150,7 +151,7 @@ impl HDNode {
                         "fffffffffffffffffffffffffffffffebaaedce6af48a03bbfd25e8cd0364141"
                     ));
                 let mut ki: [u8; 32] = [0; 32];
-                r.to_bytes_le()[..32]
+                r.to_bytes_be()[..32]
                     .iter()
                     .enumerate()
                     .for_each(|(index, e)| {
@@ -162,12 +163,6 @@ impl HDNode {
                 (ki, public_key)
             }
             None => {
-                // let ki = hmac_result_left.clone();
-                // let secret_key = SecretKey::from_slice(&ki)?;
-                // let public_key = PublicKey::from_secret_key(&secp, &secret_key);
-                // // elliptic_curve::PublicKey::from_slice(&public_key);
-                // elliptic_curve::
-                // ki
                 todo!()
             }
         };
@@ -186,7 +181,7 @@ impl HDNode {
 
     fn derive_path(&self, path: &str) -> Result<HDNode, Box<dyn std::error::Error>> {
         let mut components = path.split("/").collect::<Vec<_>>();
-        if components.len() == 0 || (components[0] == "m" && self.depth != 0) {
+        if components.len() == 0 || path == "" || (components[0] == "m" && self.depth != 0) {
             return Err(format!("invalid path - {}", path).into());
         }
 
@@ -231,10 +226,10 @@ mod tests {
     #[test]
     fn test_hd() {
         let a = HDNode::new().unwrap();
-        let node = a.derive_path("m/44'/337'/0'/0/0").unwrap();
+        let node = a.derive_path("m/44'").unwrap();
         let pk = hex::encode(&node.private_key.unwrap());
         println!("{}", node.mnemonic.unwrap().phrase());
-        println!("{}", pk)
+        println!("{}", pk);
     }
 
     #[test]

@@ -34,6 +34,16 @@ impl Seed {
         }
     }
 
+    /// 通过对比 EtherJs 中的代码，生成种子是直接使用的 mnemonic 而不是 entropy
+    pub fn new_cpc(mnemonic: &Mnemonic, password: &str) -> Self {
+        let salt = format!("mnemonic{}", password);
+        let bytes = pbkdf2(mnemonic.phrase().as_bytes(), &salt);
+
+        Self {
+            bytes,
+        }
+    }
+
     /// Get the seed value as a byte slice
     pub fn as_bytes(&self) -> &[u8] {
         &self.bytes
