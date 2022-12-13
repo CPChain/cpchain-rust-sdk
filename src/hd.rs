@@ -1,9 +1,9 @@
-use bip39::{Language, Mnemonic, MnemonicType, Seed};
+use bip39::{Language, Mnemonic, Seed};
 use hex_literal::hex;
 use hmac::{Hmac, Mac};
 use num_bigint::BigUint;
 use regex::Regex;
-use secp256k1::{ecdsa, PublicKey, Secp256k1, SecretKey};
+use secp256k1::{PublicKey, Secp256k1, SecretKey};
 use sha2::Sha512;
 
 // "Bitcoin seed"
@@ -19,7 +19,8 @@ const HARDENED_BIT: u64 = 0x80000000;
 /// BIP39: https://github.com/bitcoin/bips/blob/master/bip-0039.mediawiki
 /// https://stevenocean.github.io/2018/09/23/generate-hd-wallet-by-bip39.html
 #[derive(Debug, Clone)]
-struct HDNode {
+#[allow(dead_code)]
+pub struct HDNode {
     pub private_key: Option<[u8; 32]>,
     pub public_key: [u8; 33], // beginning with 0x02 or 0x03 to denote the sign of the missing Y component.
     address: String,
@@ -69,7 +70,7 @@ impl HDNode {
             master_chain_code,
             0,
             0,
-            "".to_string(),
+            "m".to_string(),
             Some(mnemonic),
         ))
     }
@@ -179,7 +180,7 @@ impl HDNode {
         Ok(node)
     }
 
-    fn derive_path(&self, path: &str) -> Result<HDNode, Box<dyn std::error::Error>> {
+    pub fn derive_path(&self, path: &str) -> Result<HDNode, Box<dyn std::error::Error>> {
         let mut components = path.split("/").collect::<Vec<_>>();
         if components.len() == 0 || path == "" || (components[0] == "m" && self.depth != 0) {
             return Err(format!("invalid path - {}", path).into());
@@ -192,18 +193,19 @@ impl HDNode {
         let r2 = Regex::new(r"^\d+$")?;
         let mut node = self.clone();
         for elem in components.iter() {
+            println!("-->>{} {} {}", node.depth, hex::encode(&node.private_key.unwrap()), node.path);
             if r1.is_match(elem) {
                 let index = elem[..elem.len() - 1].to_string().parse::<u64>()?;
                 if index > HARDENED_BIT {
                     return Err(format!("invalid path index - {}", index).into());
                 }
-                node = self._derive(HARDENED_BIT + index)?;
+                node = node._derive(HARDENED_BIT + index)?;
             } else if r2.is_match(elem) {
                 let index = elem.to_string().parse::<u64>()?;
                 if index > HARDENED_BIT {
                     return Err(format!("invalid path index - {}", index).into());
                 }
-                node = self._derive(index)?;
+                node = node._derive(index)?;
             }
         }
         Ok(node)
@@ -226,7 +228,7 @@ mod tests {
     #[test]
     fn test_hd() {
         let a = HDNode::new().unwrap();
-        let node = a.derive_path("m/44'").unwrap();
+        let node = a.derive_path("m/44'/337'/0'/0/0").unwrap();
         let pk = hex::encode(&node.private_key.unwrap());
         println!("{}", node.mnemonic.unwrap().phrase());
         println!("{}", pk);
