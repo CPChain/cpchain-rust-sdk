@@ -23,3 +23,4 @@ regex = "1.7.0"
 hex-literal = "0.3.4"
 num-bigint = "0.4.3"
 elliptic-curve = {version="0.12.3", features=["arithmetic"]}
+serde = {version="1.0.150", features=["derive", "std"]}
