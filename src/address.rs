@@ -1,3 +1,5 @@
+use std::fmt::Display;
+
 use web3::{types::H160};
 
 use crate::utils::{self, checksum_encode};
@@ -19,6 +21,12 @@ impl Address {
     }
     pub fn to_checksum(&self) -> String {
         checksum_encode(&self.h160)
+    }
+}
+
+impl Display for Address {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.write_str(&self.to_checksum())
     }
 }
 

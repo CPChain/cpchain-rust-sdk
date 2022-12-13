@@ -1,14 +1,14 @@
-use bip39::{Language, Mnemonic};
-use secp256k1::{rand, Secp256k1, SecretKey, PublicKey};
+use bip39::Mnemonic;
+use secp256k1::{rand, PublicKey, Secp256k1, SecretKey};
 use web3::{signing, types::Address as Web3Address};
 
-use crate::{address::Address, utils};
+use crate::{address::Address, hd::HDNode, utils};
 
 /// Account
-/// 
+///
 /// Example
 /// ```rust
-/// let account = Account::random();
+/// let account = Account::new();
 /// // Get addres
 /// println!("{}", account.address.to_checksum());
 /// ```
@@ -18,6 +18,7 @@ pub struct Account {
     #[allow(dead_code)]
     public_key: PublicKey,
     pub address: Address,
+    pub mnemonic: Option<Mnemonic>,
 }
 
 fn generate_address(public_key: &PublicKey) -> Address {
@@ -29,32 +30,55 @@ fn generate_address(public_key: &PublicKey) -> Address {
 }
 
 impl Account {
-    fn new(secret_key: SecretKey) -> Self {
+    pub fn new(derive_path: Option<String>) -> Result<Self, Box<dyn std::error::Error>> {
+        let hd_node = HDNode::new()?;
+        Account::_new(derive_path, &hd_node)
+    }
+
+    fn _new(derive_path: Option<String>, hd_node: &HDNode) -> Result<Account, Box<dyn std::error::Error>> {
+        let hd_node = hd_node.derive_path(
+            derive_path
+                .unwrap_or("m/44'/337'/0'/0/0".to_string())
+                .as_str(),
+        )?;
+        let secret_key = SecretKey::from_slice(&hd_node.private_key.unwrap())?;
+        let secp = Secp256k1::new();
+        let public_key = PublicKey::from_secret_key(&secp, &secret_key);
+        let address = generate_address(&public_key);
+        Ok(Self {
+            secret_key,
+            public_key,
+            address,
+            mnemonic: hd_node.mnemonic,
+        })
+    }
+
+    pub fn from_phrase(phrase: &str, derive_path: Option<String>) -> Result<Account, Box<dyn std::error::Error>> {
+        let hd_node = HDNode::from_phrase(phrase)?;
+        Account::_new(derive_path, &hd_node)
+    }
+
+    fn from_secert_key(secret_key: SecretKey) -> Self {
         let secp = Secp256k1::new();
         let public_key = PublicKey::from_secret_key(&secp, &secret_key);
         let address = generate_address(&public_key);
         Self {
             secret_key,
             public_key,
-            address
+            address,
+            mnemonic: None,
         }
     }
 
     pub fn from_private_key(private_key: &str) -> Result<Self, Box<dyn std::error::Error>> {
         let bytes = utils::hex_to_bytes(private_key)?;
         let secret_key = SecretKey::from_slice(&bytes)?;
-        Ok(Account::new(secret_key))
+        Ok(Account::from_secert_key(secret_key))
     }
 
     pub fn random() -> Account {
         let secret_key = SecretKey::new(&mut rand::thread_rng());
-        Account::new(secret_key)
-    }
-
-    pub fn mnemonic(&self) -> String {
-        println!("{:?}", self.secret_key.secret_bytes().len());
-        let mnemonic = Mnemonic::from_entropy(&self.secret_key.secret_bytes(), Language::English).unwrap();
-        mnemonic.phrase().to_string()
+        Account::from_secert_key(secret_key)
     }
 
     pub fn private_key(&self) -> String {
@@ -65,7 +89,7 @@ impl Account {
 
 #[cfg(test)]
 mod tests {
-    use bip39::{Mnemonic, MnemonicType, Language};
+    use bip39::{Language, Mnemonic, MnemonicType};
 
     use crate::address::Address;
 
@@ -75,12 +99,26 @@ mod tests {
     fn test_create_account() {
         let account = Account::random();
         assert!(account.private_key().len() == 66);
+        let account = Account::new(None).unwrap();
+        println!("{} {}", account.mnemonic.unwrap().phrase(), account.address)
+    }
+
+    #[test]
+    fn test_from_phrase() {
+        let account = Account::from_phrase("length much pull abstract almost spin hair chest ankle harbor dizzy life", None).unwrap();
+        assert_eq!(account.address.to_checksum(), "0x7D491C482eBa270700b584888f864177205c5159");
     }
 
     #[test]
     fn test_from_private_key() {
-        let account = Account::from_private_key("0x6c0296556144bf09864f0583886867e5cb2eea02206ca7187d998529ff8ef069").unwrap();
-        assert!(account.address == Address::from_str("0x7de6c6E04Ea0CDc76fD51c6F441C25a7DCA236A0").unwrap())
+        let account = Account::from_private_key(
+            "0x6c0296556144bf09864f0583886867e5cb2eea02206ca7187d998529ff8ef069",
+        )
+        .unwrap();
+        assert!(
+            account.address
+                == Address::from_str("0x7de6c6E04Ea0CDc76fD51c6F441C25a7DCA236A0").unwrap()
+        )
     }
 
     #[test]
@@ -97,6 +135,6 @@ mod tests {
         // let mnemonic = "lyrics mean wisdom census merit sample always escape spread tone pipe current";
         let account = Account::from_private_key(private_key).unwrap();
         assert!(account.address == Address::from_str(addr).unwrap());
-        println!("{}", account.mnemonic())
+        assert_eq!(account.mnemonic.is_none(), true);
     }
 }
