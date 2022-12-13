@@ -4,6 +4,7 @@ mod cpc_web3;
 mod transport;
 mod address;
 mod utils;
+pub mod hd;
 pub mod accounts;
 
 #[tokio::main]

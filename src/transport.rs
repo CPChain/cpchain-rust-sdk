@@ -130,7 +130,6 @@ async fn execute_rpc<T: DeserializeOwned>(
             // Insert uncles to compatible ethereum
             let uncles = b",\"uncles\": []}}";
             response.append(&mut uncles.to_vec());
-            // println!("{:?} {}", url_1, String::from_utf8_lossy(&response));
         }
     }
     log::debug!(

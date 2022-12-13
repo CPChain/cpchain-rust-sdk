@@ -1,3 +1,4 @@
+use bip39::{Language, Mnemonic};
 use secp256k1::{rand, Secp256k1, SecretKey, PublicKey};
 use web3::{signing, types::Address as Web3Address};
 
@@ -50,6 +51,12 @@ impl Account {
         Account::new(secret_key)
     }
 
+    pub fn mnemonic(&self) -> String {
+        println!("{:?}", self.secret_key.secret_bytes().len());
+        let mnemonic = Mnemonic::from_entropy(&self.secret_key.secret_bytes(), Language::English).unwrap();
+        mnemonic.phrase().to_string()
+    }
+
     pub fn private_key(&self) -> String {
         let bytes = self.secret_key.secret_bytes().to_vec();
         format!("0x{}", hex::encode(&bytes))
@@ -58,6 +65,8 @@ impl Account {
 
 #[cfg(test)]
 mod tests {
+    use bip39::{Mnemonic, MnemonicType, Language};
+
     use crate::address::Address;
 
     use super::Account;
@@ -72,5 +81,22 @@ mod tests {
     fn test_from_private_key() {
         let account = Account::from_private_key("0x6c0296556144bf09864f0583886867e5cb2eea02206ca7187d998529ff8ef069").unwrap();
         assert!(account.address == Address::from_str("0x7de6c6E04Ea0CDc76fD51c6F441C25a7DCA236A0").unwrap())
+    }
+
+    #[test]
+    fn test_bip39() {
+        let mnemonic = Mnemonic::new(MnemonicType::Words12, Language::English);
+        println!("{}", mnemonic.phrase());
+        println!("{:?}", mnemonic.entropy().len())
+    }
+
+    #[test]
+    fn test_mnemonic_of_account() {
+        let addr = "0xd7998FD7F5454722a16Cd67E881CedF9896CE396";
+        let private_key = "0xf07ab943a5cd880d273ec38878bfa914bbfa1fe46dc6deb78590f8ef137a0690";
+        // let mnemonic = "lyrics mean wisdom census merit sample always escape spread tone pipe current";
+        let account = Account::from_private_key(private_key).unwrap();
+        assert!(account.address == Address::from_str(addr).unwrap());
+        println!("{}", account.mnemonic())
     }
 }
