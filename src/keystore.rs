@@ -1,6 +1,14 @@
 use std::fmt::Display;
 
+use pbkdf2::{
+    password_hash::{
+        rand_core::OsRng, PasswordHasher, SaltString,
+    },
+    Params, Pbkdf2,
+};
 use serde::{Deserialize, Serialize};
+
+use crate::accounts::Account;
 
 /// https://github.com/ethereum/wiki/wiki/Web3-Secret-Storage-Definition
 #[derive(Serialize, Deserialize, Debug)]
@@ -31,9 +39,13 @@ struct CryptoInfo<T> {
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct Pbkdf2Params {
+    // 重复计算次数
     c: u64,
+    // 期望密钥长度
     dklen: usize,
+    // 伪随机函数，如 HMAC
     prf: String,
+    // 盐
     salt: String,
 }
 
@@ -50,6 +62,15 @@ pub struct ScryptParams {
 pub enum KDF {
     PBKDF2(Pbkdf2Params),
     SCRYPT(ScryptParams),
+}
+
+impl KDF {
+    pub fn serialize_params(&self) -> Result<String, Box<dyn std::error::Error>> {
+        match self {
+            KDF::PBKDF2(params) => Ok(serde_json::to_string(&params)?),
+            KDF::SCRYPT(params) => Ok(serde_json::to_string(&params)?),
+        }
+    }
 }
 
 impl Serialize for KDF {
@@ -71,13 +92,37 @@ impl Display for KDF {
     }
 }
 
-impl <T> Keystore <T> where T: Serialize {
+impl<T> Keystore<T>
+where
+    T: Serialize,
+{
     pub fn to_string(&self) -> Result<String, Box<dyn std::error::Error>> {
         match serde_json::to_string(&self) {
             Ok(s) => return Ok(s),
-            Err(e) => return Err(format!("{}", e).into())
+            Err(e) => return Err(format!("{}", e).into()),
         }
     }
+
+    pub fn encrypt_pbkdf2(account: &Account, password: &str) {}
+}
+
+fn encrypt_pbkdf2(password: &str) -> Result<(Vec<u8>, KDF), Box<dyn std::error::Error>> {
+    let salt = SaltString::generate(&mut OsRng);
+    let rounds = 262144;
+    let dklen = 32;
+    let params = Params {
+        rounds: rounds,
+        output_length: 32,
+    };
+    let hash = Pbkdf2
+        .hash_password_customized(password.as_bytes(), None, None, params, &salt)
+        .expect("PBKDF2 hash failed");
+    Ok((hash.hash.unwrap().as_bytes().to_vec(), KDF::PBKDF2(Pbkdf2Params{
+        c: rounds as u64,
+        dklen: dklen,
+        prf: "hmac-sha256".to_string(),
+        salt: hex::encode(salt.as_bytes()),
+    })))
 }
 
 #[cfg(test)]
@@ -138,5 +183,12 @@ mod tests {
         };
         let serialized = keystore.to_string().unwrap();
         println!("{}", serialized);
+    }
+
+    #[test]
+    fn test_pbkdf2() {
+        let password = "123456";
+        let (_, params) = encrypt_pbkdf2(password).unwrap();
+        println!("{}", params.serialize_params().unwrap());
     }
 }

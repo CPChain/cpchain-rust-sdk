@@ -75,6 +75,12 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "9e1b586273c5702936fe7b7d6896644d8be71e6314cfe09d3167c95f712589e8"
 
 [[package]]
+name = "base64ct"
+version = "1.5.3"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "b645a089122eccb6111b4f81cbc1a49f5900ac4666bb93ac027feaecf15607bf"
+
+[[package]]
 name = "bip39"
 version = "0.1.0"
 dependencies = [
@@ -82,7 +88,7 @@ dependencies = [
  "hashbrown 0.1.8",
  "hmac 0.7.1",
  "once_cell 0.1.8",
- "pbkdf2",
+ "pbkdf2 0.3.0",
  "rand 0.6.5",
  "sha2 0.8.2",
 ]
@@ -243,6 +249,8 @@ dependencies = [
  "jsonrpc-core",
  "log",
  "num-bigint",
+ "pbkdf2 0.11.0",
+ "rand_core 0.6.4",
  "regex",
  "reqwest",
  "secp256k1 0.24.2",
@@ -1309,6 +1317,17 @@ dependencies = [
 ]
 
 [[package]]
+name = "password-hash"
+version = "0.4.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "7676374caaee8a325c9e7a2ae557f216c5563a171d6997b0ef8a65af35147700"
+dependencies = [
+ "base64ct",
+ "rand_core 0.6.4",
+ "subtle 2.4.1",
+]
+
+[[package]]
 name = "pbkdf2"
 version = "0.3.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1317,6 +1336,18 @@ dependencies = [
  "byteorder",
  "crypto-mac",
  "rayon",
+]
+
+[[package]]
+name = "pbkdf2"
+version = "0.11.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "83a0692ec44e4cf1ef28ca317f14f8f07da2d95ec3fa01f86e4467b725e60917"
+dependencies = [
+ "digest 0.10.5",
+ "hmac 0.12.1",
+ "password-hash",
+ "sha2 0.10.6",
 ]
 
 [[package]]
