@@ -1,73 +1,49 @@
-use aes::Aes256;
-use aes::cipher::{
-    BlockEncrypt, BlockDecrypt, KeyInit,
-    generic_array::GenericArray,
-};
+pub use common::*;
+use my_ctr::aes_ctr;
+use ecb::{encrypt_ebc, decrypt_ebc};
 use sha2::{Sha256, Digest};
+mod ecb;
+mod my_ctr;
+mod common;
 
-const AES_BLOCK_SIZE: usize = 16;
-
-/// http://aes.online-domain-tools.com/
 pub enum AES {
-	AES256
+	AES128([u8; 16]),
+	AES256([u8; 32]),
 }
 
-pub fn encrypt(key: [u8;32], data: Vec<u8>) -> Vec<u8> {
-	let key = GenericArray::from(key);
-	// Initialize cipher
-	let cipher = Aes256::new(&key);
-	// Encrypt
-	let mut i = 0;
-	let mut result: Vec<u8> = Vec::new();
-	loop {
-		let mut buffer = [0u8;AES_BLOCK_SIZE];
-		for j in 0..AES_BLOCK_SIZE {
-			if (i + j) >= data.len() {
-				break;
+impl AES {
+	pub fn encrypt(&self, data: &Vec<u8>, params: &AESParams) -> Result<Vec<u8>, Box<dyn std::error::Error>> {
+		match *self {
+			AES::AES256(key) => match params.mode.as_ref().unwrap_or(&Mode::CTR(InitVector::I16([0x24; 16]))) {
+				Mode::ECB => {
+					Ok(encrypt_ebc(key, &data))
+				}
+    			Mode::CTR(_) => todo!(),
 			}
-			buffer[j] = data[i + j];
-		}
-		let mut block = GenericArray::from(buffer);
-		cipher.encrypt_block(&mut block);
-		i += AES_BLOCK_SIZE;
-		result.append(&mut block.to_vec());
-		if i >= data.len() {
-			break;
+			AES::AES128(key) => match params.mode.as_ref().unwrap_or(&Mode::CTR(InitVector::I16([0x24; 16]))) {
+				Mode::ECB => todo!(),
+				Mode::CTR(iv) => {
+					Ok(aes_ctr(key, data.clone(), Some(iv.iv())))
+				},
+			},
 		}
 	}
-	result
-}
-
-pub fn decrypt(key: [u8; 32], data: Vec<u8>) -> Vec<u8> {
-	let key = GenericArray::from(key);
-	// Initialize cipher
-	let cipher = Aes256::new(&key);
-	// Encrypt
-	let mut i = 0;
-	let mut result: Vec<u8> = Vec::new();
-	loop {
-		let mut buffer = [0u8;AES_BLOCK_SIZE];
-		for j in 0..AES_BLOCK_SIZE {
-			if (i + j) >= data.len() {
-				break;
+	pub fn decrypt(&self, encrypted_data: &Vec<u8>, params: &AESParams) -> Result<Vec<u8>, Box<dyn std::error::Error>> {
+		match *self {
+			AES::AES256(key) => match params.mode.as_ref().unwrap_or(&Mode::CTR(InitVector::I16([0x24; 16]))) {
+				Mode::ECB => {
+					Ok(decrypt_ebc(key, encrypted_data))
+				},
+				Mode::CTR(_) => todo!(),
 			}
-			buffer[j] = data[i + j];
-		}
-		let mut block = GenericArray::from(buffer);
-		cipher.decrypt_block(&mut block);
-		i += AES_BLOCK_SIZE;
-		if i >= data.len() {
-			let r = &mut block.to_vec();
-			while r.len() > 0 && r[r.len() - 1] == 0 {
-				r.pop();
-			}
-			result.append(r);
-			break;
-		} else {
-			result.append(&mut block.to_vec());
+    		AES::AES128(key) => match params.mode.as_ref().unwrap_or(&Mode::CTR(InitVector::I16([0x24; 16]))) {
+				Mode::ECB => todo!(),
+				Mode::CTR(iv) => {
+					Ok(aes_ctr(key, encrypted_data.clone(), Some(iv.iv())))
+				},
+			},
 		}
 	}
-	result
 }
 
 // Generate 32 bytes (256 bit) secret
@@ -93,18 +69,37 @@ mod tests {
 	use hex_literal::hex as hex_macro;
 
 	#[test]
-	fn test_aes() {
+	fn test_aes_ecd() {
 		let pwd = "password".to_string();
 		let key = aes256_kdf(&pwd).unwrap();
-		println!("{}", hex::encode(&key[..32]));
 		let data = "cpchaincpchaincpchaincpchaincpchaincpchaincpchaincpchain";
-		println!("Data: {:x?}", data.as_bytes());
-		let encryted = encrypt(key, data.as_bytes().to_vec());
+		let params = AESParams {
+			mode: Some(Mode::ECB)
+		};
+		let encryted = AES::AES256(key).encrypt(&data.as_bytes().to_vec(), &params).unwrap();
 		// Encrypted by http://aes.online-domain-tools.com/
 		let expected = hex_macro!("836c568e9aa0df25e569d486a7d4ecf26263745c6438a160beb7cf5f4b1f9b36b79bbd20f477efe727cea7eacbba11598698001a8ecc55324078f121a14a6d3b");
 		assert_eq!(encryted, expected);
-		println!("Encrypted data: {:x?}", encryted.as_slice());
-		let decrypted = decrypt(key, encryted.clone());
-		println!("Decrypted data: {:x?}", decrypted.as_slice());
+		let decrypted = AES::AES256(key).decrypt(&encryted.clone(), &params).unwrap();
+		assert_eq!(decrypted, hex_macro!("6370636861696e6370636861696e6370636861696e6370636861696e6370636861696e6370636861696e6370636861696e6370636861696e"));
+	}
+
+	#[test]
+	fn test_cpc_ctr() {
+		let key = [0x42; 16];
+		let iv = [0x24; 16];
+		// let iv = [0x24; 16];
+		let plaintext = *b"hello world! this is my plaintext.";
+		let ciphertext = hex_macro!(
+			"3357121ebb5a29468bd861467596ce3da59bdee42dcc0614dea955368d8a5dc0cad4"
+		);
+		let params = AESParams {
+			mode: Some(Mode::CTR(InitVector::I16(iv)))
+		};
+		let encrypted = AES::AES128(key).encrypt(&plaintext.to_vec(), &params).unwrap();
+		assert_eq!(encrypted[..], ciphertext[..]);
+		let decrypted = AES::AES128(key).decrypt(&encrypted, &params).unwrap();
+		assert_eq!(decrypted[..], plaintext[..]);
+		println!("{}", String::from_utf8(decrypted).unwrap())
 	}
 }
