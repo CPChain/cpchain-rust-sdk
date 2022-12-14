@@ -1,4 +1,4 @@
-use std::fmt::Display;
+use std::fmt::{Display, self};
 
 use cpc_aes::{AESParams, AES, Mode, InitVector};
 use pbkdf2::{
@@ -7,7 +7,9 @@ use pbkdf2::{
     },
     Params, Pbkdf2,
 };
-use serde::{Deserialize, Serialize, ser::SerializeStruct};
+use serde::{Deserialize, Serialize, ser::SerializeStruct, de::Visitor};
+use uuid::Uuid;
+use web3::signing::keccak256;
 
 use crate::accounts::Account;
 
@@ -28,9 +30,7 @@ struct CipherParams {
 #[derive(Deserialize, Debug)]
 struct CryptoInfo {
     cipher: String,
-    #[serde(rename = "cipherparams")]
     cipher_params: CipherParams,
-    #[serde(rename = "ciphertext")]
     cipher_text: String,
     kdf: KDF,
     mac: String,
@@ -50,6 +50,15 @@ impl Serialize for CryptoInfo {
         info.end()
     }
 }
+
+// impl <'de> Deserialize <'de> for CryptoInfo {
+//     fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+//     where
+//         D: serde::Deserializer<'de> {
+//         enum Field {}
+//         todo!()
+//     }
+// }
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct Pbkdf2Params {
@@ -72,10 +81,10 @@ pub struct ScryptParams {
     salt: String,
 }
 
-#[derive(Deserialize, Debug, Clone)]
+#[derive(Debug, Clone)]
 pub enum KDF {
     PBKDF2(Option<Pbkdf2Params>),
-    SCRYPT(ScryptParams),
+    SCRYPT(Option<ScryptParams>),
 }
 
 impl KDF {
@@ -88,7 +97,7 @@ impl KDF {
     pub fn encrypt(&self, password: &str) -> Result<(Vec<u8>, KDF), Box<dyn std::error::Error>> {
         match self {
             KDF::PBKDF2(_) => {
-                encrypt_pbkdf2(password)
+                pbkdf2_derive(password)
             },
             KDF::SCRYPT(_) => todo!()
         }
@@ -101,6 +110,32 @@ impl Serialize for KDF {
         S: serde::Serializer,
     {
         serializer.serialize_str(&format!("{}", self))
+    }
+}
+
+impl <'de> Deserialize<'de> for KDF {
+    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+    where
+        D: serde::Deserializer<'de> {
+        struct StringVisitor;
+        impl <'de> Visitor <'de> for StringVisitor {
+            type Value = String;
+            
+            fn expecting(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
+                formatter.write_str("pbkdf2 or scrypt")
+            }
+
+            fn visit_str<E>(self, v: &str) -> Result<Self::Value, E>
+                where
+                    E: serde::de::Error, {
+                Ok(v.to_string())
+            }
+        }
+        let v = deserializer.deserialize_string(StringVisitor)?;
+        if v == "pbkdf2" {
+            return Ok(KDF::PBKDF2(None))
+        }
+        return Ok(KDF::SCRYPT(None))
     }
 }
 
@@ -140,30 +175,51 @@ impl Keystore {
         };
 
         let encrypted = AES::AES128(derived_key).encrypt(&account.private_key_bytes().to_vec(), &params).unwrap();
-        
+
+        let decrypted = AES::AES128(derived_key).encrypt(&encrypted, &params).unwrap();
+
+        // mac
+        let mut bytes = password_hash[16..].to_vec();
+        bytes.append(&mut encrypted.clone());
+        let mac = keccak256(&bytes);
+        // id
+        let id = Uuid::new_v4();
         Ok(Self {
-            address: account.address.to_checksum(),
+            address: account.address.to_string().to_lowercase(),
             crypto: CryptoInfo { 
                 cipher: "aes-128-ctr".to_string(), 
                 cipher_params: CipherParams { iv: hex::encode(iv) }, 
-                cipher_text: hex::encode(encrypted),
+                cipher_text: hex::encode(&encrypted),
                 kdf: kdf, 
-                mac: "xxx".to_string()
+                mac: hex::encode(mac),
             },
-            id: "xxx".to_string(),
+            id: id.to_string(),
             version: 3,
         })
     }
+
+    // pub fn decrypt(json: &str, password: &str) {
+
+    // }
 }
 
-fn encrypt_pbkdf2(password: &str) -> Result<(Vec<u8>, KDF), Box<dyn std::error::Error>> {
+impl From<String> for Keystore {
+    fn from(s: String) -> Self {
+        let ks: Keystore = serde_json::from_str(s.as_str()).unwrap();
+        ks
+    }
+}
+
+fn pbkdf2_derive(password: &str) -> Result<(Vec<u8>, KDF), Box<dyn std::error::Error>> {
     let salt = SaltString::generate(&mut OsRng);
     let rounds = 262144;
     let dklen = 32;
     let params = Params {
         rounds: rounds,
-        output_length: 32,
+        output_length: dklen,
     };
+    let mut salt_bytes: [u8; 16] = [0; 16];
+    salt.b64_decode(&mut salt_bytes).unwrap();
     let hash = Pbkdf2
         .hash_password_customized(password.as_bytes(), None, None, params, &salt)
         .expect("PBKDF2 hash failed");
@@ -171,7 +227,7 @@ fn encrypt_pbkdf2(password: &str) -> Result<(Vec<u8>, KDF), Box<dyn std::error::
         c: rounds as u64,
         dklen: dklen,
         prf: "hmac-sha256".to_string(),
-        salt: hex::encode(salt.as_bytes()),
+        salt: hex::encode(&salt_bytes),
     }))))
 }
 
@@ -223,7 +279,7 @@ mod tests {
                 },
                 cipher_text: "d172bf743a674da9cdad04534d56926ef8358534d458fffccd4e6ad2fbde479c"
                     .to_string(),
-                kdf: KDF::SCRYPT(scrypt_params.clone()),
+                kdf: KDF::SCRYPT(Some(scrypt_params.clone())),
                 mac: "517ead924a9d0dc3124507e3393d175ce3ff7c1e96529c6c555ce9e51205e9b2".to_string(),
             },
             id: "3198bc9c-6672-5ab3-d995-4942343ae5b6".to_string(),
@@ -234,10 +290,27 @@ mod tests {
     }
 
     #[test]
+    fn test_deserialize() {
+        let j = "
+            {\"address\":\"0xd7998FD7F5454722a16Cd67E881CedF9896CE396\",\"crypto\":{\"cipher\":\"aes-128-ctr\",\"cipherparams\":{\"iv\":\"24242424242424242424242424242424\"},\"ciphertext\":\"9a4785cd9c59ac3550e7be9c47045e24ae93bcd85518dd510f0e83537a6b1cf7\",\"kdf\":\"pbkdf2\",\"kdfparams\":{\"c\":262144,\"dklen\":32,\"prf\":\"hmac-sha256\",\"salt\":\"6949646d3976356e2b636e74462b32476d3742465677\"},\"mac\":\"1da9056f139ee205cc342233a1bfc3fb7cbd9f4d904aa9b971e373c369aee840\"},\"id\":\"2a327cb3-776a-4a77-8cf9-66b1a615d9b5\",\"version\":3}
+        ";
+        let ks = Keystore::from(j.to_string());
+        println!("{:?}", ks);
+    }
+
+    #[test]
+    fn test_pbkdf2_derive() {
+        let (r, kdf) = pbkdf2_derive("123456").unwrap();
+        println!("{}", hex::encode(&r));
+        println!("{:?}", kdf);
+    }
+
+    #[test]
     fn test_encrypt_pbkdf2() {
         let mnemonic = "lyrics mean wisdom census merit sample always escape spread tone pipe current";
         let account = Account::from_phrase(mnemonic, None).unwrap();
         let ks = Keystore::encrypt_pbkdf2(&account, "123456").unwrap();
+        println!("{} {:?}", ks.crypto.cipher_text, account.private_key());
         println!("{}", ks.to_string().unwrap());
     }
 }
