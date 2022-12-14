@@ -6,6 +6,25 @@ mod ecb;
 mod my_ctr;
 mod common;
 
+/// AES encryption algorithm
+/// example:
+/// ```rust
+/// let key = [0x42; 16];
+/// let iv = [0x24; 16];
+/// // let iv = [0x24; 16];
+/// let plaintext = *b"hello world! this is my plaintext.";
+/// let ciphertext = hex_macro!(
+/// 	"3357121ebb5a29468bd861467596ce3da59bdee42dcc0614dea955368d8a5dc0cad4"
+/// );
+/// let params = AESParams {
+///  mode: Some(Mode::CTR(InitVector::I16(iv)))
+/// };
+/// let encrypted = AES::AES128(key).encrypt(&plaintext.to_vec(), &params).unwrap();
+/// assert_eq!(encrypted[..], ciphertext[..]);
+/// let decrypted = AES::AES128(key).decrypt(&encrypted, &params).unwrap();
+/// assert_eq!(decrypted[..], plaintext[..]);
+/// println!("{}", String::from_utf8(decrypted).unwrap())
+/// ```
 pub enum AES {
 	AES128([u8; 16]),
 	AES256([u8; 32]),

@@ -26,3 +26,4 @@ elliptic-curve = {version="0.12.3", features=["arithmetic"]}
 serde = {version="1.0.150", features=["derive", "std"]}
 pbkdf2 = "0.11.0"
 rand_core = "0.6.4"
+cpc-aes = {version="0.1.0", path="./cpc-aes"}

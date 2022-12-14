@@ -81,6 +81,10 @@ impl Account {
         Account::from_secert_key(secret_key)
     }
 
+    pub fn private_key_bytes(&self) -> [u8; 32] {
+        self.secret_key.secret_bytes()
+    }
+
     pub fn private_key(&self) -> String {
         let bytes = self.secret_key.secret_bytes().to_vec();
         format!("0x{}", hex::encode(&bytes))
