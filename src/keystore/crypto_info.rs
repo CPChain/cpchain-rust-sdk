@@ -5,12 +5,12 @@ use serde::{Serialize, Deserialize, ser::SerializeStruct, de::{Visitor, self, Ma
 use super::kdf::KDF;
 
 
-#[derive(Serialize, Deserialize, Debug)]
+#[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct CipherParams {
     pub iv: String,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct CryptoInfo {
     pub cipher: String,
     pub cipher_params: CipherParams,

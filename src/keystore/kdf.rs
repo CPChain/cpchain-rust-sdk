@@ -40,8 +40,8 @@ impl KDF {
     }
     pub fn encrypt(&self, password: &str) -> Result<(Vec<u8>, KDF), Box<dyn std::error::Error>> {
         match self {
-            KDF::PBKDF2(_) => {
-                pbkdf2_derive(password)
+            KDF::PBKDF2(params) => {
+                pbkdf2_derive(password, params.clone())
             },
             KDF::SCRYPT(_) => todo!()
         }
@@ -93,25 +93,37 @@ impl Display for KDF {
     }
 }
 
-fn pbkdf2_derive(password: &str) -> Result<(Vec<u8>, KDF), Box<dyn std::error::Error>> {
-    let salt = SaltString::generate(&mut OsRng);
-    let rounds = 262144;
-    let dklen = 32;
-    let params = Params {
-        rounds: rounds,
-        output_length: dklen,
+fn pbkdf2_derive(password: &str, params: Option<Pbkdf2Params>) -> Result<(Vec<u8>, KDF), Box<dyn std::error::Error>> {
+    let kdf_params = match params {
+        Some(p) => p,
+        None => {
+            let rounds = 262144;
+            let dklen = 32;
+            let mut salt_bytes: [u8; 16] = [0; 16];
+            let salt = SaltString::generate(&mut OsRng);
+            salt.b64_decode(&mut salt_bytes).unwrap();
+            Pbkdf2Params {
+                c: rounds as u64,
+                dklen: dklen,
+                prf: "hmac-sha256".to_string(),
+                salt: hex::encode(&salt_bytes),
+            }
+        }
     };
-    let mut salt_bytes: [u8; 16] = [0; 16];
-    salt.b64_decode(&mut salt_bytes).unwrap();
+    let salt = SaltString::b64_encode(&hex::decode(&kdf_params.salt)?);
+    if salt.is_err() {
+        return Err(format!("Prase salt failed: {}", salt.err().unwrap()).into())
+    }
+    let salt = salt.unwrap();
+    
+    let params = Params {
+        rounds: kdf_params.c as u32,
+        output_length: kdf_params.dklen,
+    };
     let hash = Pbkdf2
         .hash_password_customized(password.as_bytes(), None, None, params, &salt)
         .expect("PBKDF2 hash failed");
-    Ok((hash.hash.unwrap().as_bytes().to_vec(), KDF::PBKDF2(Some(Pbkdf2Params{
-        c: rounds as u64,
-        dklen: dklen,
-        prf: "hmac-sha256".to_string(),
-        salt: hex::encode(&salt_bytes),
-    }))))
+    Ok((hash.hash.unwrap().as_bytes().to_vec(), KDF::PBKDF2(Some(kdf_params))))
 }
 
 #[cfg(test)]
@@ -120,7 +132,7 @@ mod tests {
 
     #[test]
     fn test_pbkdf2_derive() {
-        let (r, kdf) = pbkdf2_derive("123456").unwrap();
+        let (r, kdf) = pbkdf2_derive("123456", None).unwrap();
         println!("{}", hex::encode(&r));
         println!("{:?}", kdf);
     }

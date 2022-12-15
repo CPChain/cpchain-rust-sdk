@@ -1,4 +1,6 @@
 use cpc_aes::{AESParams, AES, Mode, InitVector};
+use rand::thread_rng;
+use rand_core::RngCore;
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 use web3::signing::keccak256;
@@ -27,9 +29,8 @@ impl Keystore {
         }
     }
 
-    pub fn encrypt_pbkdf2(account: &Account, password: &str) -> Result<Self, Box<dyn std::error::Error>> {
-        // KDF encryption
-        let (password_hash, kdf) = KDF::PBKDF2(None).encrypt(password)?;
+    fn derive(kdf: &KDF, password: &str) -> Result<([u8; 16], [u8; 16], KDF), Box<dyn std::error::Error>> {
+        let (password_hash, kdf) = kdf.encrypt(password)?;
         let mut derived_key: [u8; 16] = [0; 16];
         password_hash[..16].iter().enumerate().for_each(|(index, elem)| {
             derived_key[index] = elem.clone();
@@ -38,16 +39,40 @@ impl Keystore {
         password_hash[16..].iter().enumerate().for_each(|(index, elem)| {
             mac_prefix[index] = elem.clone();
         });
+        Ok((derived_key, mac_prefix, kdf))
+    }
+
+    fn aes_128_ctr(derived_key: [u8; 16], data: &Vec<u8>, iv: [u8; 16]) -> Vec<u8> {
         // AES encrypt
-        let iv = [0x24; 16];
         let params = AESParams {
             mode: Some(Mode::CTR(InitVector::I16(iv)))
         };
-        let encrypted = AES::AES128(derived_key).encrypt(&account.private_key_bytes().to_vec(), &params).unwrap();
-        // mac
-        let mut bytes = password_hash[16..].to_vec();
+        let encrypted = AES::AES128(derived_key).encrypt(&data, &params).unwrap();
+        encrypted
+    }
+
+    fn rand_iv() -> [u8; 16] {
+        let mut iv = [0x0; 16];
+        let mut rng = thread_rng();
+        rng.fill_bytes(&mut iv);
+        iv
+    }
+
+    fn caclute_mac(prefix: &[u8; 16], encrypted: &Vec<u8>) -> [u8; 32] {
+        let mut bytes = prefix.to_vec();
         bytes.append(&mut encrypted.clone());
         let mac = keccak256(&bytes);
+        mac
+    }
+
+    pub fn encrypt_pbkdf2(account: &Account, password: &str) -> Result<Self, Box<dyn std::error::Error>> {
+        // KDF encryption
+        let (derived_key, mac_prefix, kdf) = Keystore::derive(&KDF::PBKDF2(None), password)?;
+        // AES encrypt
+        let iv = Keystore::rand_iv();
+        let encrypted = Keystore::aes_128_ctr(derived_key, &account.private_key_bytes().to_vec(), iv);
+        // mac
+        let mac = Keystore::caclute_mac(&mac_prefix, &encrypted);
         // id
         let id = Uuid::new_v4();
         Ok(Self {
@@ -64,9 +89,31 @@ impl Keystore {
         })
     }
 
-    // pub fn decrypt(json: &str, password: &str) {
-
-    // }
+    pub fn decrypt(&self, password: &str) -> Result<Account, Box<dyn std::error::Error>> {
+        // kdf
+        let (key, mac_prefix, _) = Keystore::derive(&self.crypto.kdf, password)?;
+        let bytes = hex::decode(&self.crypto.cipher_text)?;
+        // caclute_mac
+        let expected_mac = Keystore::caclute_mac(&mac_prefix, &bytes);
+        if hex::encode(expected_mac) != self.crypto.mac {
+            return Err("invalid mac".into())
+        }
+        // decrypt
+        let mut iv:[u8; 16] = [0; 16];
+        hex::decode(&self.crypto.cipher_params.iv)?.iter().enumerate().for_each(|(i, e)| {
+            iv[i] = e.clone();
+        });
+        let decrypted = Keystore::aes_128_ctr(key, &bytes, iv);
+        let account = Account::from_private_key(&hex::encode(&decrypted))?;
+        let mut addr = self.address.clone();
+        if !addr.starts_with("0x") {
+            addr = "0x".to_string() + &addr;
+        }
+        if addr != account.address.to_checksum().to_lowercase() {
+            return Err("address mismatch".into())
+        }
+        Ok(account)
+    }
 }
 
 impl From<String> for Keystore {
@@ -137,11 +184,60 @@ mod tests {
     }
 
     #[test]
+    fn test_deserialize() {
+        let j = "
+            {\"address\":\"0xd7998FD7F5454722a16Cd67E881CedF9896CE396\",\"crypto\":{\"cipher\":\"aes-128-ctr\",\"cipherparams\":{\"iv\":\"24242424242424242424242424242424\"},\"ciphertext\":\"9a4785cd9c59ac3550e7be9c47045e24ae93bcd85518dd510f0e83537a6b1cf7\",\"kdf\":\"pbkdf2\",\"kdfparams\":{\"c\":262144,\"dklen\":32,\"prf\":\"hmac-sha256\",\"salt\":\"6949646d3976356e2b636e74462b32476d3742465677\"},\"mac\":\"1da9056f139ee205cc342233a1bfc3fb7cbd9f4d904aa9b971e373c369aee840\"},\"id\":\"2a327cb3-776a-4a77-8cf9-66b1a615d9b5\",\"version\":3}
+        ";
+        let ks = Keystore::from(j.to_string());
+        println!("{:?}", ks);
+    }
+
+    #[test]
     fn test_encrypt_pbkdf2() {
         let mnemonic = "lyrics mean wisdom census merit sample always escape spread tone pipe current";
         let account = Account::from_phrase(mnemonic, None).unwrap();
         let ks = Keystore::encrypt_pbkdf2(&account, "123456").unwrap();
         println!("{} {:?}", ks.crypto.cipher_text, account.private_key());
         println!("{}", ks.to_string().unwrap());
+    }
+
+    #[test]
+    fn test_decrypt_pbkdf2() {
+        let j = "
+        {\"address\":\"0xd7998fd7f5454722a16cd67e881cedf9896ce396\",\"crypto\":{\"cipher\":\"aes-128-ctr\",\"cipherparams\":{\"iv\":\"fa9d17a51ba92d61515a6bb629ad842e\"},\"ciphertext\":\"89ad80b27d8325bf79dcef52994e8b4ea626a357120dc8fdca4f0e61058f0496\",\"kdf\":\"pbkdf2\",\"kdfparams\":{\"c\":262144,\"dklen\":32,\"prf\":\"hmac-sha256\",\"salt\":\"dc0b353e69db487ee8ea3716085fe7b6\"},\"mac\":\"e15200e3b57f22714f09629fcf98b79fd8af6f8493c663f09c771e9cb17c1075\"},\"id\":\"83798882-4537-41ae-b205-30b032f2c88d\",\"version\":3}
+        ";
+        let account = Keystore::from(j.to_string()).decrypt("123456").unwrap();
+        assert_eq!(account.address.to_string(), "0xd7998FD7F5454722a16Cd67E881CedF9896CE396")
+    }
+
+    #[test]
+    fn test_decrypt_pbkdf2_password_error() {
+        let j = "
+        {\"address\":\"0xd7998fd7f5454722a16cd67e881cedf9896ce396\",\"crypto\":{\"cipher\":\"aes-128-ctr\",\"cipherparams\":{\"iv\":\"fa9d17a51ba92d61515a6bb629ad842e\"},\"ciphertext\":\"89ad80b27d8325bf79dcef52994e8b4ea626a357120dc8fdca4f0e61058f0496\",\"kdf\":\"pbkdf2\",\"kdfparams\":{\"c\":262144,\"dklen\":32,\"prf\":\"hmac-sha256\",\"salt\":\"dc0b353e69db487ee8ea3716085fe7b6\"},\"mac\":\"e15200e3b57f22714f09629fcf98b79fd8af6f8493c663f09c771e9cb17c1075\"},\"id\":\"83798882-4537-41ae-b205-30b032f2c88d\",\"version\":3}
+        ";
+        let r = Keystore::from(j.to_string()).decrypt("1234567");
+        assert_eq!(r.is_err(), true);
+        // 密码错误，KDF 导出错误，故 MAC 错误
+        assert_eq!(r.err().unwrap().to_string(), "invalid mac");
+    }
+
+    #[test]
+    fn test_decrypt_pbkdf2_address_mismatch() {
+        let j = "
+        {\"address\":\"0x17998fd7f5454722a16cd67e881cedf9896ce396\",\"crypto\":{\"cipher\":\"aes-128-ctr\",\"cipherparams\":{\"iv\":\"fa9d17a51ba92d61515a6bb629ad842e\"},\"ciphertext\":\"89ad80b27d8325bf79dcef52994e8b4ea626a357120dc8fdca4f0e61058f0496\",\"kdf\":\"pbkdf2\",\"kdfparams\":{\"c\":262144,\"dklen\":32,\"prf\":\"hmac-sha256\",\"salt\":\"dc0b353e69db487ee8ea3716085fe7b6\"},\"mac\":\"e15200e3b57f22714f09629fcf98b79fd8af6f8493c663f09c771e9cb17c1075\"},\"id\":\"83798882-4537-41ae-b205-30b032f2c88d\",\"version\":3}
+        ";
+        let r = Keystore::from(j.to_string()).decrypt("123456");
+        assert_eq!(r.is_err(), true);
+        assert_eq!(r.err().unwrap().to_string(), "address mismatch");
+    }
+
+    #[test]
+    fn test_decrypt_pbkdf2_invalid_mac() {
+        let j = "
+        {\"address\":\"0xd7998fd7f5454722a16cd67e881cedf9896ce396\",\"crypto\":{\"cipher\":\"aes-128-ctr\",\"cipherparams\":{\"iv\":\"fa9d17a51ba92d61515a6bb629ad842e\"},\"ciphertext\":\"89ad80b27d8325bf79dcef52994e8b4ea626a357120dc8fdca4f0e61058f0496\",\"kdf\":\"pbkdf2\",\"kdfparams\":{\"c\":262144,\"dklen\":32,\"prf\":\"hmac-sha256\",\"salt\":\"dc0b353e69db487ee8ea3716085fe7b6\"},\"mac\":\"e15200e3b57f22714f09629fcf98b79fd8af6f8493c663f09c771e9cb17c1076\"},\"id\":\"83798882-4537-41ae-b205-30b032f2c88d\",\"version\":3}
+        ";
+        let r = Keystore::from(j.to_string()).decrypt("123456");
+        assert_eq!(r.is_err(), true);
+        assert_eq!(r.err().unwrap().to_string(), "invalid mac");
     }
 }
