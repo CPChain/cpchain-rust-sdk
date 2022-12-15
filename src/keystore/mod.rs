@@ -1,13 +1,14 @@
 use cpc_aes::{AESParams, AES, Mode, InitVector};
-use serde::{Deserialize, Serialize, ser::SerializeStruct};
+use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 use web3::signing::keccak256;
 
 use crate::accounts::Account;
 
-use self::kdf::KDF;
+use self::{kdf::KDF, crypto_info::{CryptoInfo, CipherParams}};
 
 mod kdf;
+mod crypto_info;
 
 /// https://github.com/ethereum/wiki/wiki/Web3-Secret-Storage-Definition
 #[derive(Serialize, Deserialize, Debug)]
@@ -17,44 +18,6 @@ pub struct Keystore {
     id: String,
     version: usize,
 }
-
-#[derive(Serialize, Deserialize, Debug)]
-struct CipherParams {
-    iv: String,
-}
-
-#[derive(Deserialize, Debug)]
-struct CryptoInfo {
-    cipher: String,
-    cipher_params: CipherParams,
-    cipher_text: String,
-    kdf: KDF,
-    mac: String,
-}
-
-impl Serialize for CryptoInfo {
-    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
-    where
-        S: serde::Serializer {
-        let mut info = serializer.serialize_struct("CryptoInfo", 1)?;
-        info.serialize_field("cipher", &self.cipher)?;
-        info.serialize_field("cipherparams", &self.cipher_params)?;
-        info.serialize_field("ciphertext", &self.cipher_text)?;
-        info.serialize_field("kdf", &self.kdf)?;
-        info.serialize_field("kdfparams", &self.kdf.serialize_params().expect("serialize params of kdf failed"))?;
-        info.serialize_field("mac", &self.mac)?;
-        info.end()
-    }
-}
-
-// impl <'de> Deserialize <'de> for CryptoInfo {
-//     fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
-//     where
-//         D: serde::Deserializer<'de> {
-//         enum Field {}
-//         todo!()
-//     }
-// }
 
 impl Keystore {
     pub fn to_string(&self) -> Result<String, Box<dyn std::error::Error>> {
@@ -171,15 +134,6 @@ mod tests {
         };
         let serialized = keystore.to_string().unwrap();
         println!("{}", serialized);
-    }
-
-    #[test]
-    fn test_deserialize() {
-        let j = "
-            {\"address\":\"0xd7998FD7F5454722a16Cd67E881CedF9896CE396\",\"crypto\":{\"cipher\":\"aes-128-ctr\",\"cipherparams\":{\"iv\":\"24242424242424242424242424242424\"},\"ciphertext\":\"9a4785cd9c59ac3550e7be9c47045e24ae93bcd85518dd510f0e83537a6b1cf7\",\"kdf\":\"pbkdf2\",\"kdfparams\":{\"c\":262144,\"dklen\":32,\"prf\":\"hmac-sha256\",\"salt\":\"6949646d3976356e2b636e74462b32476d3742465677\"},\"mac\":\"1da9056f139ee205cc342233a1bfc3fb7cbd9f4d904aa9b971e373c369aee840\"},\"id\":\"2a327cb3-776a-4a77-8cf9-66b1a615d9b5\",\"version\":3}
-        ";
-        let ks = Keystore::from(j.to_string());
-        println!("{:?}", ks);
     }
 
     #[test]
