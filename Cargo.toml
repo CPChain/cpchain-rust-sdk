@@ -29,3 +29,4 @@ rand_core = "0.6.4"
 cpc-aes = {version="0.1.0", path="./cpc-aes"}
 uuid = { version = "1.2.2", features = ["v4", "fast-rng", "macro-diagnostics"] }
 rand = "0.8.5"
+scrypt = {version="0.10.0", default-features = false}
