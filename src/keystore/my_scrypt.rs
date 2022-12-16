@@ -3,8 +3,6 @@ use std::time::Instant;
 use hmac::Hmac;
 use sha2::Sha256;
 
-use super::bits;
-
 /// https://github.com/golang/crypto/blob/master/scrypt/scrypt.go
 /// TODO 搞清楚为什么 Go 实现的 Scrypt 比 Rust 的快这么多
 
@@ -249,9 +247,10 @@ pub fn scrypt(
     if n <= 1 || n & (n - 1) != 0 {
         return Err("scrypt: N must be > 1 and a power of 2".into());
     }
-    // if (r as u64)* (p as u64) >= 1<<30 || r > maxInt/128/p || r > maxInt/256 || N > maxInt/128/r {
-    // 	return nil, errors.New("scrypt: parameters are too large")
-    // }
+    let max_int = i32::MAX as u32;
+    if (r as u64)* (p as u64) >= 1<<30 || r > max_int/128/p || r > max_int/256 || n > max_int/128/r {
+    	return Err("scrypt: parameters are too large".into())
+    }
 
     let mut xy = create_arr::<u32>(64 * r);
     let mut v = create_arr::<u32>(32 * n * r);
@@ -325,13 +324,13 @@ mod tests {
     fn test_ethereum() {
         test_item(
             "123456",
-            b"salt",
+            b"salt123",
             262144, // 29s -> 15s -> 8s
             // 131072,
             8,
             1,
             32,
-            Some("a039f9763a09142313ffb5a7a753d4154559554a6d6b76745a7f24e04b0ea25c".to_string()),
+            Some("7b5371571e4b637ec12f80ab284feaf2b4499708031a01f8b45d572851d32750".to_string()),
             // Some("65ace1afdd157166b959b2b808e6fb87b33c86fad40084a1df11e081cf98bf8a".to_string()),
             // None
         );
