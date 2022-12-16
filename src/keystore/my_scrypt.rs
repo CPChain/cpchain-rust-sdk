@@ -1,5 +1,3 @@
-use std::time::Instant;
-
 use hmac::Hmac;
 use sha2::Sha256;
 
@@ -165,8 +163,6 @@ fn transform_u32_to_array_of_u8(x: u32) -> [u8; 4] {
 }
 
 fn smix(b: &mut [u8], r: u32, n: u32, v: &mut [u32], xy: &mut [u32]) {
-    // 耗时计算
-    let start_timer = Instant::now();
     let mut tmp: [u32; 16] = [0; 16];
     #[allow(non_snake_case)]
     let R = 32 * r;
@@ -183,7 +179,6 @@ fn smix(b: &mut [u8], r: u32, n: u32, v: &mut [u32], xy: &mut [u32]) {
         i += 1;
     }
     let mut i = 0;
-    println!("-->0 time cost: {:?} ms", start_timer.elapsed().as_millis());
     while i < n {
         block_copy(&mut (v[((i * R) as usize)..]), x, R as usize);
         block_mix(&mut tmp, x, &mut y, r as usize);
@@ -194,7 +189,6 @@ fn smix(b: &mut [u8], r: u32, n: u32, v: &mut [u32], xy: &mut [u32]) {
         block_mix(&mut tmp, &y, x, r as usize);
         i += 2;
     }
-    println!("-->1 time cost: {:?} ms", start_timer.elapsed().as_millis());
     let mut i = 0;
     let mut j: i32;
     while i < n {
@@ -211,7 +205,6 @@ fn smix(b: &mut [u8], r: u32, n: u32, v: &mut [u32], xy: &mut [u32]) {
         block_mix(&mut tmp, &y, x, r as usize);
         i += 2;
     }
-    println!("-->2 time cost: {:?} ms", start_timer.elapsed().as_millis());
     let mut j: usize = 0;
     for v in &x[..(R as usize)] {
         transform_u32_to_array_of_u8(*v)
@@ -222,7 +215,6 @@ fn smix(b: &mut [u8], r: u32, n: u32, v: &mut [u32], xy: &mut [u32]) {
             });
         j += 4;
     }
-    println!("-->3 time cost: {:?} ms", start_timer.elapsed().as_millis());
 }
 
 fn create_arr<T>(n: u32) -> Vec<T>

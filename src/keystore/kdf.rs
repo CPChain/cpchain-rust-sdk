@@ -2,8 +2,9 @@ use std::fmt::{Display, self};
 
 use pbkdf2::{password_hash::{SaltString, PasswordHasher}, Params, Pbkdf2};
 use rand_core::OsRng;
-use scrypt::{scrypt, Params as ScryptParamsOrigin};
 use serde::{Serialize, Deserialize, de::Visitor};
+
+use crate::keystore::my_scrypt;
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct Pbkdf2Params {
@@ -32,8 +33,7 @@ pub enum KDF {
     /// Ethereum 的 Scrypt 不同于标准 Scrypt https://github.com/ethereum/go-ethereum/issues/19977
     /// https://github.com/golang/crypto/blob/master/scrypt/scrypt.go#L200
     /// http://ricmoo.github.io/scrypt-js/
-    /// https://github.com/dchest/scrypt-async-js/blob/master/scrypt-async.js
-    /// 标准库的 scrypt 太慢，不适用于区块链常用的 scrypt 参数，故参考 async-scrypt-js，新写一个异步 scrypt
+    /// 标准库的 scrypt 太慢，不适用于区块链常用的 scrypt 参数，已重新实现
     SCRYPT(Option<ScryptParams>),
 }
 
@@ -49,8 +49,8 @@ impl KDF {
             KDF::PBKDF2(params) => {
                 pbkdf2_derive(password, params.clone())
             },
-            KDF::SCRYPT(_) => {
-                todo!()
+            KDF::SCRYPT(params) => {
+                scrypt_derive(password, params.clone())
             }
         }
     }
@@ -138,7 +138,7 @@ fn pbkdf2_derive(password: &str, params: Option<Pbkdf2Params>) -> Result<(Vec<u8
     Ok((hash.hash.unwrap().as_bytes().to_vec(), KDF::PBKDF2(Some(kdf_params))))
 }
 
-fn scrypt_derive(password: &str, params: Option<ScryptParams>) -> Result<(), Box<dyn std::error::Error>> {
+fn scrypt_derive(password: &str, params: Option<ScryptParams>) -> Result<(Vec<u8>, KDF), Box<dyn std::error::Error>> {
     let kdf_params = match params {
         Some(p) => p,
         None => {
@@ -152,23 +152,15 @@ fn scrypt_derive(password: &str, params: Option<ScryptParams>) -> Result<(), Box
             }
         },
     };
-    let salt = SaltString::b64_encode(&hex::decode(&kdf_params.salt)?);
-    if salt.is_err() {
-        return Err(format!("Prase salt failed: {}", salt.err().unwrap()).into())
-    }
-    // let salt = salt.unwrap();
-    // Hash password to PHC string ($scrypt$...)
     let n = (kdf_params.n as f64).log2().ceil();
     if n >= 64.0 {
         return Err("n is too large".into())
     }
-    println!("-->{:?}", n);
 
-    let params = ScryptParamsOrigin::new(n as u8, kdf_params.r, kdf_params.p).unwrap();
     let mut output: [u8; 32] = [0; 32];
-    scrypt(password.as_bytes(), &hex::decode(&kdf_params.salt)?, &params, &mut output).unwrap();
-    println!("{}\n{:?}", kdf_params.salt, hex::encode(output));
-    Ok(())
+    let out = my_scrypt::scrypt(password, &hex::decode(&kdf_params.salt)?, kdf_params.n as u32, kdf_params.r, kdf_params.p, kdf_params.dklen as u32)?;
+    output.copy_from_slice(&out);
+    Ok((output.to_vec(), KDF::SCRYPT(Some(kdf_params))))
 }
 
 #[cfg(test)]
@@ -186,12 +178,13 @@ mod tests {
 
     #[test]
     fn test_scrypt_derive() {
-        scrypt_derive("123456", Some(ScryptParams{
+        let (hash, _) = scrypt_derive("password", Some(ScryptParams{
             dklen: 32,
             n: 131072,
             p: 1,
             r: 8,
             salt: hex::encode(b"salt"),
         })).unwrap();
+        assert_eq!(hex::encode(&hash), "621b282083cea28c49ab3673360283cff9afe85b3e6a409bebc800563cc08c85")
     }
 }
