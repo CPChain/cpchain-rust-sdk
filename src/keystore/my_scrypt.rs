@@ -1,3 +1,5 @@
+use std::time::Instant;
+
 use hmac::Hmac;
 use sha2::Sha256;
 
@@ -15,7 +17,11 @@ fn as_u32_le(array: &[u8]) -> u32 {
 
 // block_copy copies n numbers from src into dst.
 fn block_copy(dst: &mut [u32], src: &[u32], n: usize) {
-    dst[..n].copy_from_slice(&src[..n]);
+    unsafe {
+        let dst_ptr = dst.as_mut_ptr();
+        let src_ptr = src.as_ptr();
+        std::ptr::copy_nonoverlapping(src_ptr, dst_ptr, n);
+    }
 }
 
 // block_xor XORs numbers from dst with n numbers from src.
@@ -30,12 +36,10 @@ fn block_mix(tmp: &mut [u32; 16], input: &[u32], out: &mut [u32], r: usize) {
     block_copy(tmp, &input[(2 * r - 1) * 16..], 16);
     let mut i = 0;
     while i < 2 * r {
-        let tmp_out = salsa_xor(tmp, &input[((i * 16) as usize)..]);
         let start = (i * 8) as usize;
-        block_copy(&mut out[start..], &tmp_out, 16);
-        let tmp_out = salsa_xor(tmp, &input[((i * 16 + 16) as usize)..]);
+        salsa_xor(tmp, &input[((i * 16) as usize)..], &mut out[start..]);
         let start = (i * 8 + r * 16) as usize;
-        block_copy(&mut out[start..], &tmp_out, 16);
+        salsa_xor(tmp, &input[((i * 16 + 16) as usize)..], &mut out[start..]);
         i += 2;
     }
 }
@@ -47,7 +51,7 @@ fn add(a: u32, b: u32) -> u32 {
 
 // salsa_xor applies Salsa20/8 to the XOR of 16 numbers from tmp and in,
 // and puts the result into both tmp and out.
-fn salsa_xor(tmp: &mut [u32; 16], input: &[u32]) -> [u32; 16] {
+fn salsa_xor(tmp: &mut [u32; 16], input: &[u32], output: &mut [u32]) {
     let w0 = tmp[0] ^ input[0];
     let w1 = tmp[1] ^ input[1];
     let w2 = tmp[2] ^ input[2];
@@ -84,45 +88,45 @@ fn salsa_xor(tmp: &mut [u32; 16], input: &[u32]) -> [u32; 16] {
 
     let mut i = 0;
     while i < 8 {
-        x4 ^= bits::rotate_left32(add(x0, x12), 7);
-        x8 ^= bits::rotate_left32(add(x4, x0), 9);
-        x12 ^= bits::rotate_left32(add(x8, x4), 13);
-        x0 ^= bits::rotate_left32(add(x12, x8), 18);
+        x4 ^= add(x0, x12).rotate_left(7);
+        x8 ^= add(x4, x0).rotate_left(9);
+        x12 ^= add(x8, x4).rotate_left(13);
+        x0 ^= add(x12, x8).rotate_left(18);
 
-        x9 ^= bits::rotate_left32(add(x5, x1), 7);
-        x13 ^= bits::rotate_left32(add(x9, x5), 9);
-        x1 ^= bits::rotate_left32(add(x13, x9), 13);
-        x5 ^= bits::rotate_left32(add(x1, x13), 18);
+        x9 ^= add(x5, x1).rotate_left(7);
+        x13 ^= add(x9, x5).rotate_left(9);
+        x1 ^= add(x13, x9).rotate_left(13);
+        x5 ^= add(x1, x13).rotate_left(18);
 
-        x14 ^= bits::rotate_left32(add(x10, x6), 7);
-        x2 ^= bits::rotate_left32(add(x14, x10), 9);
-        x6 ^= bits::rotate_left32(add(x2, x14), 13);
-        x10 ^= bits::rotate_left32(add(x6, x2), 18);
+        x14 ^= add(x10, x6).rotate_left(7);
+        x2 ^= add(x14, x10).rotate_left(9);
+        x6 ^= add(x2, x14).rotate_left(13);
+        x10 ^= add(x6, x2).rotate_left(18);
 
-        x3 ^= bits::rotate_left32(add(x15, x11), 7);
-        x7 ^= bits::rotate_left32(add(x3, x15), 9);
-        x11 ^= bits::rotate_left32(add(x7, x3), 13);
-        x15 ^= bits::rotate_left32(add(x11, x7), 18);
+        x3 ^= add(x15, x11).rotate_left(7);
+        x7 ^= add(x3, x15).rotate_left(9);
+        x11 ^= add(x7, x3).rotate_left(13);
+        x15 ^= add(x11, x7).rotate_left(18);
 
-        x1 ^= bits::rotate_left32(add(x0, x3), 7);
-        x2 ^= bits::rotate_left32(add(x1, x0), 9);
-        x3 ^= bits::rotate_left32(add(x2, x1), 13);
-        x0 ^= bits::rotate_left32(add(x3, x2), 18);
+        x1 ^= add(x0, x3).rotate_left(7);
+        x2 ^= add(x1, x0).rotate_left(9);
+        x3 ^= add(x2, x1).rotate_left(13);
+        x0 ^= add(x3, x2).rotate_left(18);
 
-        x6 ^= bits::rotate_left32(add(x5, x4), 7);
-        x7 ^= bits::rotate_left32(add(x6, x5), 9);
-        x4 ^= bits::rotate_left32(add(x7, x6), 13);
-        x5 ^= bits::rotate_left32(add(x4, x7), 18);
+        x6 ^= add(x5, x4).rotate_left(7);
+        x7 ^= add(x6, x5).rotate_left(9);
+        x4 ^= add(x7, x6).rotate_left(13);
+        x5 ^= add(x4, x7).rotate_left(18);
 
-        x11 ^= bits::rotate_left32(add(x10, x9), 7);
-        x8 ^= bits::rotate_left32(add(x11, x10), 9);
-        x9 ^= bits::rotate_left32(add(x8, x11), 13);
-        x10 ^= bits::rotate_left32(add(x9, x8), 18);
+        x11 ^= add(x10, x9).rotate_left(7);
+        x8 ^= add(x11, x10).rotate_left(9);
+        x9 ^= add(x8, x11).rotate_left(13);
+        x10 ^= add(x9, x8).rotate_left(18);
 
-        x12 ^= bits::rotate_left32(add(x15, x14), 7);
-        x13 ^= bits::rotate_left32(add(x12, x15), 9);
-        x14 ^= bits::rotate_left32(add(x13, x12), 13);
-        x15 ^= bits::rotate_left32(add(x14, x13), 18);
+        x12 ^= add(x15, x14).rotate_left(7);
+        x13 ^= add(x12, x15).rotate_left(9);
+        x14 ^= add(x13, x12).rotate_left(13);
+        x15 ^= add(x14, x13).rotate_left(18);
         i += 2;
     }
     x0 = add(x0, w0);
@@ -145,10 +149,8 @@ fn salsa_xor(tmp: &mut [u32; 16], input: &[u32]) -> [u32; 16] {
     let x: [u32; 16] = [
         x0, x1, x2, x3, x4, x5, x6, x7, x8, x9, x10, x11, x12, x13, x14, x15,
     ];
-    let mut out: [u32; 16] = [0; 16];
-    block_copy(&mut out, &x, 16);
+    block_copy(output, &x, 16);
     block_copy(tmp, &x, 16);
-    return out;
 }
 
 fn integer(b: &[u32], r: u32) -> u64 {
@@ -165,6 +167,8 @@ fn transform_u32_to_array_of_u8(x: u32) -> [u8; 4] {
 }
 
 fn smix(b: &mut [u8], r: u32, n: u32, v: &mut [u32], xy: &mut [u32]) {
+    // 耗时计算
+    let start_timer = Instant::now();
     let mut tmp: [u32; 16] = [0; 16];
     #[allow(non_snake_case)]
     let R = 32 * r;
@@ -181,6 +185,7 @@ fn smix(b: &mut [u8], r: u32, n: u32, v: &mut [u32], xy: &mut [u32]) {
         i += 1;
     }
     let mut i = 0;
+    println!("-->0 time cost: {:?} ms", start_timer.elapsed().as_millis());
     while i < n {
         block_copy(&mut (v[((i * R) as usize)..]), x, R as usize);
         block_mix(&mut tmp, x, &mut y, r as usize);
@@ -191,6 +196,7 @@ fn smix(b: &mut [u8], r: u32, n: u32, v: &mut [u32], xy: &mut [u32]) {
         block_mix(&mut tmp, &y, x, r as usize);
         i += 2;
     }
+    println!("-->1 time cost: {:?} ms", start_timer.elapsed().as_millis());
     let mut i = 0;
     let mut j: i32;
     while i < n {
@@ -207,6 +213,7 @@ fn smix(b: &mut [u8], r: u32, n: u32, v: &mut [u32], xy: &mut [u32]) {
         block_mix(&mut tmp, &y, x, r as usize);
         i += 2;
     }
+    println!("-->2 time cost: {:?} ms", start_timer.elapsed().as_millis());
     let mut j: usize = 0;
     for v in &x[..(R as usize)] {
         transform_u32_to_array_of_u8(*v)
@@ -217,6 +224,7 @@ fn smix(b: &mut [u8], r: u32, n: u32, v: &mut [u32], xy: &mut [u32]) {
             });
         j += 4;
     }
+    println!("-->3 time cost: {:?} ms", start_timer.elapsed().as_millis());
 }
 
 fn create_arr<T>(n: u32) -> Vec<T>
@@ -283,6 +291,7 @@ mod tests {
 
     #[test]
     fn test_scrypt() {
+        // 在线校验地址：https://ricmoo.github.io/scrypt-js/
         test_item(
             "123456",
             b"salt",
@@ -309,6 +318,20 @@ mod tests {
             1,
             32,
             Some("fbf24a275c1a99bf1c7a2fc1127702e485ac90ea6065e0a5188d02e842363e1f".to_string()),
+        );
+    }
+
+    #[test]
+    fn test_ethereum() {
+        test_item(
+            "123456",
+            b"salt",
+            262144, // 29s -> 15s -> 8s
+            8,
+            1,
+            32,
+            Some("a039f9763a09142313ffb5a7a753d4154559554a6d6b76745a7f24e04b0ea25c".to_string()),
+            // None
         );
     }
 }

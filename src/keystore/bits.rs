@@ -20,7 +20,7 @@ mod tests {
         rotate_left32(0x10000000, 18);
         let a: u32 = 4264765846;
         let b: u32 = 435110852;
-        let c = ((a as u64) + (b as u64)) as u32;
+        let (c, _) = a.overflowing_add(b);
         println!("{}", c)
     }
 }
