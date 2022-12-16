@@ -1,5 +1,3 @@
-#![feature(unchecked_math)]
-
 use cpc_aes::{AESParams, AES, Mode, InitVector};
 use rand::thread_rng;
 use rand_core::RngCore;

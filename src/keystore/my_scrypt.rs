@@ -327,10 +327,12 @@ mod tests {
             "123456",
             b"salt",
             262144, // 29s -> 15s -> 8s
+            // 131072,
             8,
             1,
             32,
             Some("a039f9763a09142313ffb5a7a753d4154559554a6d6b76745a7f24e04b0ea25c".to_string()),
+            // Some("65ace1afdd157166b959b2b808e6fb87b33c86fad40084a1df11e081cf98bf8a".to_string()),
             // None
         );
     }

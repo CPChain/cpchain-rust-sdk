@@ -175,7 +175,7 @@ fn scrypt_derive(password: &str, params: Option<ScryptParams>) -> Result<(), Box
 mod tests {
     use crate::keystore::kdf::pbkdf2_derive;
 
-    use super::scrypt_derive;
+    use super::{scrypt_derive, ScryptParams};
 
     #[test]
     fn test_pbkdf2_derive() {
@@ -186,6 +186,12 @@ mod tests {
 
     #[test]
     fn test_scrypt_derive() {
-        scrypt_derive("123456", None).unwrap();
+        scrypt_derive("123456", Some(ScryptParams{
+            dklen: 32,
+            n: 131072,
+            p: 1,
+            r: 8,
+            salt: hex::encode(b"salt"),
+        })).unwrap();
     }
 }
