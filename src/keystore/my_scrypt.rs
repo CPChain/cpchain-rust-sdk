@@ -15,10 +15,7 @@ fn as_u32_le(array: &[u8]) -> u32 {
 
 // block_copy copies n numbers from src into dst.
 fn block_copy(dst: &mut [u32], src: &[u32], n: usize) {
-    // copy(dst, src[:n])
-    src[..n].iter().enumerate().for_each(|(index, b)| {
-        dst[index] = *b;
-    });
+    dst[..n].copy_from_slice(&src[..n]);
 }
 
 // block_xor XORs numbers from dst with n numbers from src.
@@ -34,13 +31,11 @@ fn block_mix(tmp: &mut [u32; 16], input: &[u32], out: &mut [u32], r: usize) {
     let mut i = 0;
     while i < 2 * r {
         let tmp_out = salsa_xor(tmp, &input[((i * 16) as usize)..]);
-        tmp_out.iter().enumerate().for_each(|(index, b)| {
-            out[(i * 8 + index) as usize] = *b;
-        });
+        let start = (i * 8) as usize;
+        block_copy(&mut out[start..], &tmp_out, 16);
         let tmp_out = salsa_xor(tmp, &input[((i * 16 + 16) as usize)..]);
-        tmp_out.iter().enumerate().for_each(|(index, b)| {
-            out[((i * 8 + r * 16) as usize + index)] = *b;
-        });
+        let start = (i * 8 + r * 16) as usize;
+        block_copy(&mut out[start..], &tmp_out, 16);
         i += 2;
     }
 }
@@ -151,10 +146,8 @@ fn salsa_xor(tmp: &mut [u32; 16], input: &[u32]) -> [u32; 16] {
         x0, x1, x2, x3, x4, x5, x6, x7, x8, x9, x10, x11, x12, x13, x14, x15,
     ];
     let mut out: [u32; 16] = [0; 16];
-    x.iter().enumerate().for_each(|(index, b)| {
-        out[index] = *b;
-        tmp[index] = *b;
-    });
+    block_copy(&mut out, &x, 16);
+    block_copy(tmp, &x, 16);
     return out;
 }
 
@@ -311,11 +304,11 @@ mod tests {
         test_item(
             "password",
             b"salt2022",
-            4096,
+            4096 * 16, // 构造一个时间稍长的示例，未优化 Rust 需要 7.56 s
             8,
             1,
             32,
-            Some("4ae662ec3c926f458ef1a457d5b133c2c53afdbe184d4ea1b960c7f7fd45e4bd".to_string()),
+            Some("fbf24a275c1a99bf1c7a2fc1127702e485ac90ea6065e0a5188d02e842363e1f".to_string()),
         );
     }
 }
