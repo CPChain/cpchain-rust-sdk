@@ -11,6 +11,8 @@ use self::{kdf::KDF, crypto_info::{CryptoInfo, CipherParams}};
 
 mod kdf;
 mod crypto_info;
+mod my_scrypt;
+mod bits;
 
 /// https://github.com/ethereum/wiki/wiki/Web3-Secret-Storage-Definition
 #[derive(Serialize, Deserialize, Debug)]

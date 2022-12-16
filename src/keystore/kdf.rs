@@ -32,6 +32,8 @@ pub enum KDF {
     /// Ethereum 的 Scrypt 不同于标准 Scrypt https://github.com/ethereum/go-ethereum/issues/19977
     /// https://github.com/golang/crypto/blob/master/scrypt/scrypt.go#L200
     /// http://ricmoo.github.io/scrypt-js/
+    /// https://github.com/dchest/scrypt-async-js/blob/master/scrypt-async.js
+    /// 标准库的 scrypt 太慢，不适用于区块链常用的 scrypt 参数，故参考 async-scrypt-js，新写一个异步 scrypt
     SCRYPT(Option<ScryptParams>),
 }
 
@@ -47,7 +49,7 @@ impl KDF {
             KDF::PBKDF2(params) => {
                 pbkdf2_derive(password, params.clone())
             },
-            KDF::SCRYPT(params) => {
+            KDF::SCRYPT(_) => {
                 todo!()
             }
         }
