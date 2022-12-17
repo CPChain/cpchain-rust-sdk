@@ -5,6 +5,7 @@ edition = "2021"
 homepage = "https://cpchain.io"
 repository = "https://github.com/cpchain/cpchain-rust-sdk"
 license = "Apache-2.0"
+description = "Rust SDK for CPChain Ecosystem"
 include = [
     "**/*.rs",
     "Cargo.toml",
