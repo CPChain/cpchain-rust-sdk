@@ -8,6 +8,7 @@ license = "Apache-2.0"
 include = [
     "**/*.rs",
     "Cargo.toml",
+    "README.md",
 ]
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
@@ -23,7 +24,7 @@ serde_json = "1.0.89"
 tokio = "1.21.2"
 url = "2.3.1"
 web3 = {version="0.18.0"}
-bip39 = {version="0.1.0", path="./bip39"}
+cpc-bip39 = {version="0.1.0", path="./bip39"}
 hmac = {version="0.12.1", features=["std", "reset"]}
 sha2 = "0.10.6"
 regex = "1.7.0"

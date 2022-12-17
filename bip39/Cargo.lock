@@ -48,19 +48,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "bip39"
-version = "0.1.0"
-dependencies = [
- "failure",
- "hashbrown",
- "hmac",
- "once_cell",
- "pbkdf2",
- "rand",
- "sha2",
-]
-
-[[package]]
 name = "bitflags"
 version = "1.3.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -118,6 +105,19 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "ddfc5b9aa5d4507acaf872de71051dfd0e309860e88966e1051e462a077aac4f"
 dependencies = [
  "bitflags",
+]
+
+[[package]]
+name = "cpc-bip39"
+version = "0.1.0"
+dependencies = [
+ "failure",
+ "hashbrown",
+ "hmac",
+ "once_cell",
+ "pbkdf2",
+ "rand",
+ "sha2",
 ]
 
 [[package]]

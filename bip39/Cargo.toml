@@ -1,14 +1,18 @@
 [package]
-name = "bip39"
+name = "cpc-bip39"
 version = "0.1.0"
-authors = [ "Stephen Oliver <steve@infincia.com>" ]
 license = "MIT/Apache-2.0"
-homepage = "https://github.com/infincia/bip39-rs/"
-repository = "https://github.com/infincia/bip39-rs/"
+homepage = "https://github.com/cpchain/cpchain-rust-sdk"
+repository = "https://github.com/cpchain/cpchain-rust-sdk"
 readme = "README.md"
 description = "A Rust implementation of BIP-0039"
 documentation = "https://docs.rs/bip39"
 keywords = ["bip39", "bitcoin", "mnemonic"]
+include = [
+    "**/*.rs",
+    "Cargo.toml",
+    "README.md",
+]
 
 [lib]
 name = "bip39"
