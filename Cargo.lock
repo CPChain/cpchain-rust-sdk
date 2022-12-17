@@ -258,22 +258,12 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "5827cebf4670468b8772dd191856768aedcb1b0278a04f989f7766351917b9dc"
 
 [[package]]
-name = "cpc-aes"
-version = "0.1.0"
-dependencies = [
- "aes",
- "ctr",
- "hex",
- "hex-literal",
- "sha2 0.10.6",
-]
-
-[[package]]
 name = "cpchain-rust-sdk"
 version = "0.1.0"
 dependencies = [
+ "aes",
  "bip39",
- "cpc-aes",
+ "ctr",
  "elliptic-curve",
  "headers",
  "hex",
