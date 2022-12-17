@@ -11,6 +11,7 @@ keywords = ["bip39", "bitcoin", "mnemonic"]
 include = [
     "**/*.rs",
     "Cargo.toml",
+    "src/langs/*.txt",
     "README.md",
 ]
 
