@@ -88,7 +88,7 @@ mod tests {
 	use hex_literal::hex as hex_macro;
 
 	#[test]
-	fn test_aes_ecd() {
+	fn test_aes_ecb() {
 		let pwd = "password".to_string();
 		let key = aes256_kdf(&pwd).unwrap();
 		let data = "cpchaincpchaincpchaincpchaincpchaincpchaincpchaincpchain";
