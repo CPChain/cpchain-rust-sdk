@@ -1,8 +1,8 @@
-use std::fmt::{Display, self};
+use std::fmt::{Display};
 
 use pbkdf2::{password_hash::{SaltString, PasswordHasher}, Params, Pbkdf2};
 use rand_core::OsRng;
-use serde::{Serialize, Deserialize, de::Visitor};
+use serde::{Serialize, Deserialize};
 
 use crate::keystore::my_scrypt;
 
@@ -27,7 +27,8 @@ pub struct ScryptParams {
     pub salt: String,
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Deserialize)]
+#[serde(untagged)]
 pub enum KDF {
     PBKDF2(Option<Pbkdf2Params>),
     /// Ethereum 的 Scrypt 不同于标准 Scrypt https://github.com/ethereum/go-ethereum/issues/19977
@@ -62,32 +63,6 @@ impl Serialize for KDF {
         S: serde::Serializer,
     {
         serializer.serialize_str(&format!("{}", self))
-    }
-}
-
-impl <'de> Deserialize<'de> for KDF {
-    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
-    where
-        D: serde::Deserializer<'de> {
-        struct StringVisitor;
-        impl <'de> Visitor <'de> for StringVisitor {
-            type Value = String;
-            
-            fn expecting(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
-                formatter.write_str("pbkdf2 or scrypt")
-            }
-
-            fn visit_str<E>(self, v: &str) -> Result<Self::Value, E>
-                where
-                    E: serde::de::Error, {
-                Ok(v.to_string())
-            }
-        }
-        let v = deserializer.deserialize_string(StringVisitor)?;
-        if v == "pbkdf2" {
-            return Ok(KDF::PBKDF2(None))
-        }
-        return Ok(KDF::SCRYPT(None))
     }
 }
 

@@ -1,9 +1,12 @@
 use std::fmt;
 
-use serde::{Serialize, Deserialize, ser::SerializeStruct, de::{Visitor, self, MapAccess}};
+use serde::{
+    de::{self, MapAccess, Visitor},
+    ser::SerializeStruct,
+    Deserialize, Serialize,
+};
 
 use super::kdf::KDF;
-
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct CipherParams {
@@ -23,9 +26,7 @@ impl CryptoInfo {
     fn default() -> CryptoInfo {
         Self {
             cipher: "".to_string(),
-            cipher_params: CipherParams {
-                iv: "".to_string(),
-            },
+            cipher_params: CipherParams { iv: "".to_string() },
             cipher_text: "".to_string(),
             kdf: KDF::PBKDF2(None),
             mac: "".to_string(),
@@ -36,23 +37,38 @@ impl CryptoInfo {
 impl Serialize for CryptoInfo {
     fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
     where
-        S: serde::Serializer {
+        S: serde::Serializer,
+    {
         let mut info = serializer.serialize_struct("CryptoInfo", 1)?;
         info.serialize_field("cipher", &self.cipher)?;
         info.serialize_field("cipherparams", &self.cipher_params)?;
         info.serialize_field("ciphertext", &self.cipher_text)?;
         info.serialize_field("kdf", &self.kdf)?;
-        info.serialize_field("kdfparams", &self.kdf.serialize_params().expect("serialize params of kdf failed"))?;
+        info.serialize_field(
+            "kdfparams",
+            &self
+                .kdf
+                .serialize_params()
+                .expect("serialize params of kdf failed"),
+        )?;
         info.serialize_field("mac", &self.mac)?;
         info.end()
     }
 }
 
-impl <'de> Deserialize <'de> for CryptoInfo {
+impl<'de> Deserialize<'de> for CryptoInfo {
     fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
     where
-        D: serde::Deserializer<'de> {
-        enum Field { Cipher, CipherParams, CipherText, KDF, Mac, KdfParams}
+        D: serde::Deserializer<'de>,
+    {
+        enum Field {
+            Cipher,
+            CipherParams,
+            CipherText,
+            KDF,
+            Mac,
+            KdfParams,
+        }
         impl<'de> Deserialize<'de> for Field {
             fn deserialize<D>(deserializer: D) -> Result<Field, D::Error>
             where
@@ -105,7 +121,9 @@ impl <'de> Deserialize <'de> for CryptoInfo {
                 let mut cipher_params = None;
                 let mut cipher_text = None;
                 let mut kdf = None;
-                let mut kdf_params_pbkdf2 = None;
+                let mut kdf_params_data: Option<KDF> = None;
+                // let mut kdf_params_scrypt = None;
+                // let mut kdf_params_pbkdf2 = None;
                 let mut mac = None;
                 while let Some(key) = map.next_key()? {
                     match key {
@@ -120,51 +138,47 @@ impl <'de> Deserialize <'de> for CryptoInfo {
                                 return Err(de::Error::duplicate_field("cipherparams"));
                             }
                             cipher_params = Some(map.next_value()?);
-                        },
+                        }
                         Field::CipherText => {
                             if cipher_text.is_some() {
                                 return Err(de::Error::duplicate_field("ciphertext"));
                             }
                             cipher_text = Some(map.next_value()?);
-                        },
+                        }
                         Field::KDF => {
                             if kdf.is_some() {
                                 return Err(de::Error::duplicate_field("kdf"));
                             }
                             kdf = Some(map.next_value()?);
-                        },
+                        }
                         Field::Mac => {
                             if mac.is_some() {
                                 return Err(de::Error::duplicate_field("mac"));
                             }
                             mac = Some(map.next_value()?);
-                        },
+                        }
                         Field::KdfParams => {
-                            if kdf_params_pbkdf2.is_some() {
+                            if kdf_params_data.is_some() {
                                 return Err(de::Error::duplicate_field("kdfparams"));
                             }
-                            kdf_params_pbkdf2 = Some(map.next_value()?);
-                        },
+                            kdf_params_data = Some(map.next_value()?);
+                        }
                     }
                 }
                 let cipher = cipher.ok_or_else(|| de::Error::missing_field("cipher"))?;
-                let cipher_params = cipher_params.ok_or_else(|| de::Error::missing_field("cipherparams"))?;
-                let cipher_text = cipher_text.ok_or_else(|| de::Error::missing_field("ciphertext"))?;
+                let cipher_params =
+                    cipher_params.ok_or_else(|| de::Error::missing_field("cipherparams"))?;
+                let cipher_text =
+                    cipher_text.ok_or_else(|| de::Error::missing_field("ciphertext"))?;
                 let mac = mac.ok_or_else(|| de::Error::missing_field("mac"))?;
                 // 获取 KDF
-                let real_kdf;
+                let real_kdf = kdf_params_data.clone();
                 let kdf: String = kdf.ok_or_else(|| de::Error::missing_field("kdf"))?;
-                
-                if kdf == "scrypt" {
-                    todo!()
-                } else if kdf == "pbkdf2" {
-                    if kdf_params_pbkdf2.is_none() {
-                        return Err(de::Error::missing_field("kdfparams"))
-                    }
-                    real_kdf = Some(KDF::PBKDF2(kdf_params_pbkdf2));
-                } else {
-                    return Err(de::Error::custom("Unknown KDF algorithm"))
+
+                if kdf != "scrypt" && kdf != "pbkdf2" {
+                    return Err(de::Error::custom("Unknown KDF algorithm"));
                 }
+
                 let mut crypto = CryptoInfo::default();
                 crypto.cipher = cipher;
                 crypto.cipher_params = cipher_params;
@@ -174,7 +188,14 @@ impl <'de> Deserialize <'de> for CryptoInfo {
                 Ok(crypto)
             }
         }
-        const FIELDS: &'static [&'static str] = &["cipher", "cipherparams", "ciphertext", "kdf", "kdfparams", "mac"];
+        const FIELDS: &'static [&'static str] = &[
+            "cipher",
+            "cipherparams",
+            "ciphertext",
+            "kdf",
+            "kdfparams",
+            "mac",
+        ];
         deserializer.deserialize_struct("Duration", FIELDS, CryptoInfoVisitor)
     }
 }
