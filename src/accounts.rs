@@ -8,7 +8,8 @@ use crate::{address::Address, hd::HDNode, utils};
 ///
 /// Example
 /// ```rust
-/// let account = Account::new();
+/// // Default derived path is "m/44'/337'/0'/0/0"
+/// let account = Account::new(None);
 /// // Get addres
 /// println!("{}", account.address.to_checksum());
 /// ```
