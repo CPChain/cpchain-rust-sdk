@@ -42,6 +42,10 @@ impl CPCWeb3 {
         Ok(self.web3.eth().gas_price().await?)
     }
 
+    pub async fn transaction_count(&self, address: &Address) -> Result<U256, Error> {
+        self.web3.eth().transaction_count(address.h160, None).await
+    }
+
 }
 
 #[cfg(test)]
@@ -109,8 +113,16 @@ mod tests {
     async fn test_gas_price() {
         let web3 = CPCWeb3::new("https://civilian.cpchain.io").unwrap();
         let gas_price = web3.gas_price().await.unwrap();
-        println!("{:?}", gas_price);
         assert_eq!(gas_price, U256::from(18) * U256::exp10(9))
+    }
+
+    #[tokio::test]
+    async fn test_get_transactions_cnt() {
+        let web3 = CPCWeb3::new("https://civilian.cpchain.io").unwrap();
+        let cnt = web3.transaction_count(&Address::from_str("0x1455D180E3adE94ebD9cC324D22a9065d1F5F575").unwrap()).await.unwrap();
+        assert!(cnt >= U256::from(1065));
+        let cnt = web3.transaction_count(&Address::from_str("0x2455D180E3adE94ebD9cC324D22a9065d1F5F575").unwrap()).await.unwrap();
+        assert!(cnt == U256::from(0))
     }
 
     #[tokio::test]
