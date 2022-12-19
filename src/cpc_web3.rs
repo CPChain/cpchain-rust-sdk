@@ -1,6 +1,6 @@
 use web3::{Error, Web3, types::{BlockId, Transaction, Block, H256, U256}};
 
-use crate::{transport::CPCHttp, address::Address};
+use crate::{transport::CPCHttp, address::Address, types::TransactionParameters, accounts::Account};
 
 pub struct CPCWeb3 {
     web3: Web3<CPCHttp>
@@ -32,10 +32,22 @@ impl CPCWeb3 {
         let balance = self.web3.eth().balance(address.h160, None).await?;
         Ok(balance)
     }
+
+    pub async fn sign_transaction(&self, account: &Account, tx: &TransactionParameters) -> Result<(), Error> {
+        let signed = self.web3.accounts().sign_transaction(tx.to_web3_transaction(), &account.secret_key).await?;
+        Ok(())
+    }
+
+    pub async fn gas_price(&self) -> Result<U256, Error> {
+        Ok(self.web3.eth().gas_price().await?)
+    }
+
 }
 
 #[cfg(test)]
 mod tests {
+    use crate::types::Bytes;
+
     use super::*;
 
     #[tokio::test]
@@ -91,6 +103,31 @@ mod tests {
         let web3 = CPCWeb3::new("https://civilian.cpchain.io").unwrap();
         let balance = web3.balance(Address::from_str("0x1455D180E3adE94ebD9cC324D22a9065d1F5F575").unwrap()).await.unwrap();
         println!("{:?}", balance.as_u128());
+    }
+
+    #[tokio::test]
+    async fn test_gas_price() {
+        let web3 = CPCWeb3::new("https://civilian.cpchain.io").unwrap();
+        let gas_price = web3.gas_price().await.unwrap();
+        println!("{:?}", gas_price);
+        assert_eq!(gas_price, U256::from(18) * U256::exp10(9))
+    }
+
+    #[tokio::test]
+    async fn test_sign_transaction() {
+        let web3 = CPCWeb3::new("https://civilian.cpchain.io").unwrap();
+        let account = Account::from_phrase("length much pull abstract almost spin hair chest ankle harbor dizzy life", None).unwrap();
+        println!("{}", account.address);
+        let tx_object = TransactionParameters::new(
+            337,
+            1,
+            Address::from_str("0x1455D180E3adE94ebD9cC324D22a9065d1F5F575").unwrap(),
+            300000.into(),
+            U256::exp10(6),
+            U256::exp10(17), //0.1 cpc
+            Bytes::default()
+        );
+        web3.sign_transaction(&account, &tx_object).await.unwrap();
     }
 
 }

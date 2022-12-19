@@ -83,13 +83,19 @@ impl Account {
     }
 
     pub fn private_key_bytes(&self) -> [u8; 32] {
-        self.secret_key.secret_bytes()
+        self.secret_key.serialize_secret()
     }
 
     pub fn private_key(&self) -> String {
-        let bytes = self.secret_key.secret_bytes().to_vec();
+        let bytes = self.secret_key.serialize_secret().to_vec();
         format!("0x{}", hex::encode(&bytes))
     }
+
+    /// sign_tx 给交易签名
+    pub fn sign_tx(&self) {
+
+    }
+
 }
 
 #[cfg(test)]

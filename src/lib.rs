@@ -1,5 +1,6 @@
 pub use crate::cpc_web3::CPCWeb3;
 
+pub mod types;
 mod cpc_web3;
 mod transport;
 mod address;

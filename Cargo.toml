@@ -20,7 +20,7 @@ hex = "0.4.3"
 jsonrpc-core = "18.0.0"
 log = "0.4.17"
 reqwest = "0.11.13"
-secp256k1 = { version = "0.24.2", features = ["rand-std"] }
+secp256k1 = { version = "0.21", features = ["rand-std", "recovery"] }
 serde_json = "1.0.89"
 tokio = "1.21.2"
 url = "2.3.1"
