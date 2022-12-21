@@ -1,20 +1,25 @@
-use std::time::{Instant, Duration};
+use std::time::{Duration, Instant};
 
-use web3::{Error, Web3, types::{BlockId, Transaction, Block, H256, U256, SignedTransaction, TransactionReceipt}};
+use web3::{
+    types::{
+        Block, BlockId, SignedTransaction, Transaction, TransactionReceipt, H256, U256,
+    },
+    Error, Web3,
+};
 
-use crate::{transport::CPCHttp, address::Address, types::TransactionParameters, accounts::Account};
+use crate::{
+    accounts::Account, address::Address, transport::CPCHttp, types::TransactionParameters,
+};
 
 pub struct CPCWeb3 {
-    web3: Web3<CPCHttp>
+    web3: Web3<CPCHttp>,
 }
 
 impl CPCWeb3 {
     pub fn new(url: &str) -> Result<Self, Error> {
         let transport = CPCHttp::new(url)?;
         let web3 = web3::Web3::new(transport);
-        Ok(Self {
-            web3,
-        })
+        Ok(Self { web3 })
     }
     pub async fn block_number(&self) -> Result<u64, Error> {
         let current_block = self.web3.eth().block_number().await?;
@@ -26,7 +31,10 @@ impl CPCWeb3 {
     }
 
     pub async fn block_with_txs(&self, number: u32) -> Result<Option<Block<Transaction>>, Error> {
-        self.web3.eth().block_with_txs(BlockId::Number(number.into())).await
+        self.web3
+            .eth()
+            .block_with_txs(BlockId::Number(number.into()))
+            .await
     }
 
     pub async fn balance(&self, address: Address) -> Result<U256, Error> {
@@ -34,7 +42,11 @@ impl CPCWeb3 {
         Ok(balance)
     }
 
-    pub async fn sign_transaction(&self, account: &Account, tx: &TransactionParameters) -> Result<SignedTransaction, Error> {
+    pub async fn sign_transaction(
+        &self,
+        account: &Account,
+        tx: &TransactionParameters,
+    ) -> Result<SignedTransaction, Error> {
         let signed = tx.sign(&account.secret_key);
         Ok(signed)
     }
@@ -48,16 +60,22 @@ impl CPCWeb3 {
     }
 
     pub async fn submit_signed_raw_tx(&self, signed: &SignedTransaction) -> Result<H256, Error> {
-        self.web3.eth().send_raw_transaction(signed.raw_transaction.clone()).await
+        self.web3
+            .eth()
+            .send_raw_transaction(signed.raw_transaction.clone())
+            .await
     }
 
-    pub async fn wait_tx(&self, tx_hash: &H256) -> Result<TransactionReceipt, Box<dyn std::error::Error>> {
+    pub async fn wait_tx(
+        &self,
+        tx_hash: &H256,
+    ) -> Result<TransactionReceipt, Box<dyn std::error::Error>> {
         let start = Instant::now();
         let timeout = Duration::from_secs(20);
         loop {
             let receipt = self.web3.eth().transaction_receipt(*tx_hash).await?;
             if receipt.is_some() {
-                return Ok(receipt.unwrap())
+                return Ok(receipt.unwrap());
             }
             if start.elapsed() >= timeout {
                 return Err("Waiting for transaction receipt timed out".into());
@@ -66,7 +84,10 @@ impl CPCWeb3 {
     }
 
     pub async fn estimate_gas(&self, req: &TransactionParameters) -> Result<U256, Error> {
-        self.web3.eth().estimate_gas(req.to_call_request(), None).await
+        self.web3
+            .eth()
+            .estimate_gas(req.to_call_request(), None)
+            .await
     }
 
 }
@@ -128,7 +149,10 @@ mod tests {
     #[tokio::test]
     async fn test_get_balance() {
         let web3 = CPCWeb3::new("http://192.168.0.164:8501").unwrap();
-        let balance = web3.balance(Address::from_str("0x7D491C482eBa270700b584888f864177205c5159").unwrap()).await.unwrap();
+        let balance = web3
+            .balance(Address::from_str("0x7D491C482eBa270700b584888f864177205c5159").unwrap())
+            .await
+            .unwrap();
         println!("{:?}", balance.as_u128());
     }
 
@@ -142,16 +166,30 @@ mod tests {
     #[tokio::test]
     async fn test_get_transactions_cnt() {
         let web3 = CPCWeb3::new("https://civilian.cpchain.io").unwrap();
-        let cnt = web3.transaction_count(&Address::from_str("0x1455D180E3adE94ebD9cC324D22a9065d1F5F575").unwrap()).await.unwrap();
+        let cnt = web3
+            .transaction_count(
+                &Address::from_str("0x1455D180E3adE94ebD9cC324D22a9065d1F5F575").unwrap(),
+            )
+            .await
+            .unwrap();
         assert!(cnt >= U256::from(1065));
-        let cnt = web3.transaction_count(&Address::from_str("0x2455D180E3adE94ebD9cC324D22a9065d1F5F575").unwrap()).await.unwrap();
+        let cnt = web3
+            .transaction_count(
+                &Address::from_str("0x2455D180E3adE94ebD9cC324D22a9065d1F5F575").unwrap(),
+            )
+            .await
+            .unwrap();
         assert!(cnt == U256::from(0))
     }
 
     #[tokio::test]
     async fn test_sign_transaction() {
         let web3 = CPCWeb3::new("http://192.168.0.164:8501").unwrap();
-        let account = Account::from_phrase("length much pull abstract almost spin hair chest ankle harbor dizzy life", None).unwrap();
+        let account = Account::from_phrase(
+            "length much pull abstract almost spin hair chest ankle harbor dizzy life",
+            None,
+        )
+        .unwrap();
         println!("{}", account.address);
         let gas_price = web3.gas_price().await.unwrap();
         let nonce = web3.transaction_count(&account.address).await.unwrap();
@@ -162,7 +200,7 @@ mod tests {
             300000.into(),
             gas_price,
             U256::exp10(17), //0.1 cpc
-            Bytes::default()
+            Bytes::default(),
         );
 
         let estimated_gas = web3.estimate_gas(&tx_object).await.unwrap();
@@ -176,5 +214,4 @@ mod tests {
         let receipt = web3.wait_tx(&tx_hash).await.unwrap();
         println!("{:?}", receipt);
     }
-
 }
