@@ -1,4 +1,6 @@
-use web3::{Error, Web3, types::{BlockId, Transaction, Block, H256, U256, SignedTransaction}};
+use std::time::{Instant, Duration};
+
+use web3::{Error, Web3, types::{BlockId, Transaction, Block, H256, U256, SignedTransaction, TransactionReceipt}};
 
 use crate::{transport::CPCHttp, address::Address, types::TransactionParameters, accounts::Account};
 
@@ -8,7 +10,6 @@ pub struct CPCWeb3 {
 
 impl CPCWeb3 {
     pub fn new(url: &str) -> Result<Self, Error> {
-        // let transport = web3::transports::Http::new(url)?;
         let transport = CPCHttp::new(url)?;
         let web3 = web3::Web3::new(transport);
         Ok(Self {
@@ -33,10 +34,10 @@ impl CPCWeb3 {
         Ok(balance)
     }
 
-    // pub async fn sign_transaction(&self, account: &Account, tx: &TransactionParameters) -> Result<SignedTransaction, Error> {
-    //     let signed = self.web3.accounts().sign_transaction(tx.to_web3_transaction(), &account.secret_key).await?;
-    //     Ok(signed)
-    // }
+    pub async fn sign_transaction(&self, account: &Account, tx: &TransactionParameters) -> Result<SignedTransaction, Error> {
+        let signed = tx.sign(&account.secret_key);
+        Ok(signed)
+    }
 
     pub async fn gas_price(&self) -> Result<U256, Error> {
         Ok(self.web3.eth().gas_price().await?)
@@ -48,6 +49,20 @@ impl CPCWeb3 {
 
     pub async fn submit_signed_raw_tx(&self, signed: &SignedTransaction) -> Result<H256, Error> {
         self.web3.eth().send_raw_transaction(signed.raw_transaction.clone()).await
+    }
+
+    pub async fn wait_tx(&self, tx_hash: &H256) -> Result<TransactionReceipt, Box<dyn std::error::Error>> {
+        let start = Instant::now();
+        let timeout = Duration::from_secs(20);
+        loop {
+            let receipt = self.web3.eth().transaction_receipt(*tx_hash).await?;
+            if receipt.is_some() {
+                return Ok(receipt.unwrap())
+            }
+            if start.elapsed() >= timeout {
+                return Err("Waiting for transaction receipt timed out".into());
+            }
+        }
     }
 
 }
@@ -145,10 +160,12 @@ mod tests {
             U256::exp10(17), //0.1 cpc
             Bytes::default()
         );
-        let signed = tx_object.sign(&account.secret_key);
-        // let signed = web3.sign_transaction(&account, &tx_object).await.unwrap();
-        let actual = web3.submit_signed_raw_tx(&signed).await.unwrap();
-        println!("{:?}", actual);
+        let signed = web3.sign_transaction(&account, &tx_object).await.unwrap();
+        let tx_hash = web3.submit_signed_raw_tx(&signed).await.unwrap();
+        println!("{:?}", tx_hash);
+        // wait for transaction
+        let receipt = web3.wait_tx(&tx_hash).await.unwrap();
+        println!("{:?}", receipt);
     }
 
 }
