@@ -1,4 +1,4 @@
-use web3::{Error, Web3, types::{BlockId, Transaction, Block, H256, U256}};
+use web3::{Error, Web3, types::{BlockId, Transaction, Block, H256, U256, SignedTransaction}};
 
 use crate::{transport::CPCHttp, address::Address, types::TransactionParameters, accounts::Account};
 
@@ -33,10 +33,10 @@ impl CPCWeb3 {
         Ok(balance)
     }
 
-    pub async fn sign_transaction(&self, account: &Account, tx: &TransactionParameters) -> Result<(), Error> {
-        let signed = self.web3.accounts().sign_transaction(tx.to_web3_transaction(), &account.secret_key).await?;
-        Ok(())
-    }
+    // pub async fn sign_transaction(&self, account: &Account, tx: &TransactionParameters) -> Result<SignedTransaction, Error> {
+    //     let signed = self.web3.accounts().sign_transaction(tx.to_web3_transaction(), &account.secret_key).await?;
+    //     Ok(signed)
+    // }
 
     pub async fn gas_price(&self) -> Result<U256, Error> {
         Ok(self.web3.eth().gas_price().await?)
@@ -44,6 +44,10 @@ impl CPCWeb3 {
 
     pub async fn transaction_count(&self, address: &Address) -> Result<U256, Error> {
         self.web3.eth().transaction_count(address.h160, None).await
+    }
+
+    pub async fn submit_signed_raw_tx(&self, signed: &SignedTransaction) -> Result<H256, Error> {
+        self.web3.eth().send_raw_transaction(signed.raw_transaction.clone()).await
     }
 
 }
@@ -104,8 +108,8 @@ mod tests {
 
     #[tokio::test]
     async fn test_get_balance() {
-        let web3 = CPCWeb3::new("https://civilian.cpchain.io").unwrap();
-        let balance = web3.balance(Address::from_str("0x1455D180E3adE94ebD9cC324D22a9065d1F5F575").unwrap()).await.unwrap();
+        let web3 = CPCWeb3::new("http://192.168.0.164:8501").unwrap();
+        let balance = web3.balance(Address::from_str("0x7D491C482eBa270700b584888f864177205c5159").unwrap()).await.unwrap();
         println!("{:?}", balance.as_u128());
     }
 
@@ -127,19 +131,24 @@ mod tests {
 
     #[tokio::test]
     async fn test_sign_transaction() {
-        let web3 = CPCWeb3::new("https://civilian.cpchain.io").unwrap();
+        let web3 = CPCWeb3::new("http://192.168.0.164:8501").unwrap();
         let account = Account::from_phrase("length much pull abstract almost spin hair chest ankle harbor dizzy life", None).unwrap();
         println!("{}", account.address);
+        let gas_price = web3.gas_price().await.unwrap();
+        let nonce = web3.transaction_count(&account.address).await.unwrap();
         let tx_object = TransactionParameters::new(
-            337,
-            1,
+            41,
+            nonce,
             Address::from_str("0x1455D180E3adE94ebD9cC324D22a9065d1F5F575").unwrap(),
             300000.into(),
-            U256::exp10(6),
+            gas_price,
             U256::exp10(17), //0.1 cpc
             Bytes::default()
         );
-        web3.sign_transaction(&account, &tx_object).await.unwrap();
+        let signed = tx_object.sign(&account.secret_key);
+        // let signed = web3.sign_transaction(&account, &tx_object).await.unwrap();
+        let actual = web3.submit_signed_raw_tx(&signed).await.unwrap();
+        println!("{:?}", actual);
     }
 
 }

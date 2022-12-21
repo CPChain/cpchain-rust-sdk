@@ -277,6 +277,7 @@ dependencies = [
  "rand_core 0.6.4",
  "regex",
  "reqwest",
+ "rlp",
  "scrypt",
  "secp256k1",
  "serde",
