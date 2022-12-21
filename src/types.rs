@@ -1,5 +1,6 @@
 use rlp::RlpStream;
-use web3::{signing::{self, Signature}, types::SignedTransaction};
+use serde::{Deserialize, Serialize};
+use web3::{signing::{self, Signature}, types::{SignedTransaction, CallRequest}};
 
 use crate::address::Address;
 
@@ -7,7 +8,11 @@ pub type Result = web3::Result;
 pub type U256 = web3::types::U256;
 pub type Bytes = web3::types::Bytes;
 
+#[derive(Debug, Clone, Deserialize, Serialize)]
 pub struct TransactionParameters {
+    /// Transaction type
+    #[serde(rename="type")]
+    pub tx_type: U256,
     /// Transaction nonce (None for account transaction count)
     pub nonce: U256,
     /// To address
@@ -15,6 +20,7 @@ pub struct TransactionParameters {
     /// Supplied gas
     pub gas: U256,
     /// Gas price (None for estimated gas price)
+    #[serde(rename="gasPrice")]
     pub gas_price: U256,
     /// Transferred value
     pub value: U256,
@@ -42,23 +48,26 @@ impl TransactionParameters {
             value,
             data,
             chain_id,
+            tx_type: U256::from(0)
         }
     }
-    pub fn to_web3_transaction(&self) -> web3::types::TransactionParameters {
-        let mut tp = web3::types::TransactionParameters::default();
-        tp.nonce = Some(self.nonce.into());
-        tp.to = Some(self.to.h160);
-        tp.gas = self.gas.into();
-        tp.gas_price = self.gas_price.into();
-        tp.value = self.value.into();
-        tp.data = self.data.clone();
-        tp.chain_id = self.chain_id.into();
-        tp.transaction_type = Some(0.into());
-        tp
+    pub fn to_call_request(&self) -> CallRequest {
+        CallRequest {
+            from: None,
+            to: Some(self.to.h160),
+            gas: None,
+            gas_price: Some(self.gas_price),
+            value: Some(self.value),
+            data: Some(self.data.clone()),
+            transaction_type: None,
+            access_list: None,
+            max_fee_per_gas: None,
+            max_priority_fee_per_gas: None,
+        }
     }
     fn rlp_append_legacy(&self, stream: &mut RlpStream) {
         // transactinon type for CPChain
-        stream.append(&U256::from(0));
+        stream.append(&self.tx_type);
         stream.append(&self.nonce);
         stream.append(&self.gas_price);
         stream.append(&self.gas);

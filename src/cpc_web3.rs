@@ -65,6 +65,10 @@ impl CPCWeb3 {
         }
     }
 
+    pub async fn estimate_gas(&self, req: &TransactionParameters) -> Result<U256, Error> {
+        self.web3.eth().estimate_gas(req.to_call_request(), None).await
+    }
+
 }
 
 #[cfg(test)]
@@ -160,9 +164,14 @@ mod tests {
             U256::exp10(17), //0.1 cpc
             Bytes::default()
         );
+
+        let estimated_gas = web3.estimate_gas(&tx_object).await.unwrap();
+        assert_eq!(estimated_gas, U256::from(21000));
+
         let signed = web3.sign_transaction(&account, &tx_object).await.unwrap();
         let tx_hash = web3.submit_signed_raw_tx(&signed).await.unwrap();
-        println!("{:?}", tx_hash);
+        println!("{:?} {:?}", tx_hash, signed.transaction_hash);
+        assert_eq!(tx_hash, signed.transaction_hash);
         // wait for transaction
         let receipt = web3.wait_tx(&tx_hash).await.unwrap();
         println!("{:?}", receipt);

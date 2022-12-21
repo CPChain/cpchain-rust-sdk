@@ -32,7 +32,7 @@ regex = "1.7.0"
 hex-literal = "0.3.4"
 num-bigint = "0.4.3"
 elliptic-curve = {version="0.12.3", features=["arithmetic"]}
-serde = {version="1.0.150", features=["derive", "std"]}
+serde = { version = "1.0.150", features = ["derive", "std"] }
 pbkdf2 = "0.11.0"
 rand_core = "0.6.4"
 uuid = { version = "1.2.2", features = ["v4", "fast-rng", "macro-diagnostics"] }
