@@ -1,9 +1,7 @@
 use std::time::{Duration, Instant};
 
 use web3::{
-    types::{
-        Block, BlockId, SignedTransaction, Transaction, TransactionReceipt, H256, U256,
-    },
+    types::{Block, BlockId, SignedTransaction, Transaction, TransactionReceipt, H160, H256, U256},
     Error, Web3,
 };
 
@@ -11,6 +9,7 @@ use crate::{
     accounts::Account, address::Address, transport::CPCHttp, types::TransactionParameters,
 };
 
+#[derive(Debug, Clone)]
 pub struct CPCWeb3 {
     web3: Web3<CPCHttp>,
 }
@@ -90,6 +89,17 @@ impl CPCWeb3 {
             .await
     }
 
+    pub async fn transaction_receipt(
+        &self,
+        tx_hash: &H256,
+    ) -> Result<Option<TransactionReceipt>, Error> {
+        self.web3.eth().transaction_receipt(*tx_hash).await
+    }
+
+    pub async fn is_contract(&self, addr: H160) -> Result<bool, Error> {
+        let code = self.web3.eth().code(addr, None).await?;
+        Ok(code.0.len() > 0)
+    }
 }
 
 #[cfg(test)]
@@ -213,5 +223,30 @@ mod tests {
         // wait for transaction
         let receipt = web3.wait_tx(&tx_hash).await.unwrap();
         println!("{:?}", receipt);
+    }
+
+    #[tokio::test]
+    async fn test_is_contract() {
+        let web3 = CPCWeb3::new("https://civilian.cpchain.io").unwrap();
+        assert_eq!(
+            web3.is_contract(
+                Address::from_str("0xcf3174cd4dc7c4834d8932f7c3800ab98afc437a")
+                    .unwrap()
+                    .h160
+            )
+            .await
+            .unwrap(),
+            true
+        );
+        assert_eq!(
+            web3.is_contract(
+                Address::from_str("0x1455D180E3adE94ebD9cC324D22a9065d1F5F575")
+                    .unwrap()
+                    .h160
+            )
+            .await
+            .unwrap(),
+            false
+        );
     }
 }
