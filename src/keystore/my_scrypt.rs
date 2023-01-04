@@ -235,7 +235,7 @@ pub fn scrypt(
     r: u32,
     p: u32,
     dklen: u32,
-) -> Result<Vec<u8>, Box<dyn std::error::Error>> {
+) -> Result<Vec<u8>, Box<dyn std::error::Error + Send + Sync>> {
     if n <= 1 || n & (n - 1) != 0 {
         return Err("scrypt: N must be > 1 and a power of 2".into());
     }

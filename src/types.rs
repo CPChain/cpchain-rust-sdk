@@ -6,6 +6,8 @@ use crate::address::Address;
 
 pub type Result = web3::Result;
 pub type U256 = web3::types::U256;
+pub type H160 = web3::types::H160;
+pub type H256 = web3::types::H256;
 pub type Bytes = web3::types::Bytes;
 
 #[derive(Debug, Clone, Deserialize, Serialize)]

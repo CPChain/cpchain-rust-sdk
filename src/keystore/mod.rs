@@ -31,7 +31,7 @@ impl Keystore {
         }
     }
 
-    fn derive(kdf: &KDF, password: &str) -> Result<([u8; 16], [u8; 16], KDF), Box<dyn std::error::Error>> {
+    fn derive(kdf: &KDF, password: &str) -> Result<([u8; 16], [u8; 16], KDF), Box<dyn std::error::Error + Send + Sync>> {
         let (password_hash, kdf) = kdf.encrypt(password)?;
         let mut derived_key: [u8; 16] = [0; 16];
         password_hash[..16].iter().enumerate().for_each(|(index, elem)| {
@@ -67,7 +67,7 @@ impl Keystore {
         mac
     }
 
-    fn encrypt(account: &Account, derived_key: &[u8; 16], mac_prefix: &[u8; 16], kdf: KDF) -> Result<Self, Box<dyn std::error::Error>> {
+    fn encrypt(account: &Account, derived_key: &[u8; 16], mac_prefix: &[u8; 16], kdf: KDF) -> Result<Self, Box<dyn std::error::Error + Send + Sync>> {
         // KDF encryption
         // let (derived_key, mac_prefix, kdf) = Keystore::derive(&KDF::PBKDF2(None), password)?;
         // AES encrypt
@@ -91,19 +91,19 @@ impl Keystore {
         })
     }
 
-    pub fn encrypt_pbkdf2(account: &Account, password: &str) -> Result<Self, Box<dyn std::error::Error>> {
+    pub fn encrypt_pbkdf2(account: &Account, password: &str) -> Result<Self, Box<dyn std::error::Error + Send + Sync>> {
         // KDF encryption
         let (derived_key, mac_prefix, kdf) = Keystore::derive(&KDF::PBKDF2(None), password)?;
         Keystore::encrypt(account, &derived_key, &mac_prefix, kdf)
     }
 
-    pub fn encrypt_scrypt(account: &Account, password: &str) -> Result<Self, Box<dyn std::error::Error>> {
+    pub fn encrypt_scrypt(account: &Account, password: &str) -> Result<Self, Box<dyn std::error::Error + Send + Sync>> {
         // KDF encryption
         let (derived_key, mac_prefix, kdf) = Keystore::derive(&KDF::SCRYPT(None), password)?;
         Keystore::encrypt(account, &derived_key, &mac_prefix, kdf)
     }
 
-    pub fn decrypt(&self, password: &str) -> Result<Account, Box<dyn std::error::Error>> {
+    pub fn decrypt(&self, password: &str) -> Result<Account, Box<dyn std::error::Error + Send + Sync>> {
         // kdf
         let (key, mac_prefix, _) = Keystore::derive(&self.crypto.kdf, password)?;
         let bytes = hex::decode(&self.crypto.cipher_text)?;

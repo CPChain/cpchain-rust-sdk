@@ -1,7 +1,7 @@
 use web3::{types::H160, signing};
 
 
-pub fn hex_to_bytes(hex: &str) -> Result<Vec<u8>, Box<dyn std::error::Error>> {
+pub fn hex_to_bytes(hex: &str) -> Result<Vec<u8>, Box<dyn std::error::Error + Send + Sync>> {
     let mut s = hex.to_string();
     if s.starts_with("0x") {
         s = s.trim_start_matches("0x").to_string();

@@ -39,13 +39,13 @@ pub enum KDF {
 }
 
 impl KDF {
-    pub fn serialize_params(&self) -> Result<impl Serialize, Box<dyn std::error::Error>> {
+    pub fn serialize_params(&self) -> Result<impl Serialize, Box<dyn std::error::Error + Send + Sync>> {
         match self {
             KDF::PBKDF2(params) => Ok(serde_json::to_value(&params)?),
             KDF::SCRYPT(params) => Ok(serde_json::to_value(&params)?),
         }
     }
-    pub fn encrypt(&self, password: &str) -> Result<(Vec<u8>, KDF), Box<dyn std::error::Error>> {
+    pub fn encrypt(&self, password: &str) -> Result<(Vec<u8>, KDF), Box<dyn std::error::Error + Send + Sync>> {
         match self {
             KDF::PBKDF2(params) => {
                 pbkdf2_derive(password, params.clone())
@@ -83,7 +83,7 @@ fn rand_salt() -> [u8; 16] {
     salt_bytes
 }
 
-fn pbkdf2_derive(password: &str, params: Option<Pbkdf2Params>) -> Result<(Vec<u8>, KDF), Box<dyn std::error::Error>> {
+fn pbkdf2_derive(password: &str, params: Option<Pbkdf2Params>) -> Result<(Vec<u8>, KDF), Box<dyn std::error::Error + Send + Sync>> {
     let kdf_params = match params {
         Some(p) => p,
         None => {
@@ -113,7 +113,7 @@ fn pbkdf2_derive(password: &str, params: Option<Pbkdf2Params>) -> Result<(Vec<u8
     Ok((hash.hash.unwrap().as_bytes().to_vec(), KDF::PBKDF2(Some(kdf_params))))
 }
 
-fn scrypt_derive(password: &str, params: Option<ScryptParams>) -> Result<(Vec<u8>, KDF), Box<dyn std::error::Error>> {
+fn scrypt_derive(password: &str, params: Option<ScryptParams>) -> Result<(Vec<u8>, KDF), Box<dyn std::error::Error + Send + Sync>> {
     let kdf_params = match params {
         Some(p) => p,
         None => {

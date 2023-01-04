@@ -71,7 +71,7 @@ impl Account {
         }
     }
 
-    pub fn from_private_key(private_key: &str) -> Result<Self, Box<dyn std::error::Error>> {
+    pub fn from_private_key(private_key: &str) -> Result<Self, Box<dyn std::error::Error + Send + Sync>> {
         let bytes = utils::hex_to_bytes(private_key)?;
         let secret_key = SecretKey::from_slice(&bytes)?;
         Ok(Account::from_secert_key(secret_key))
