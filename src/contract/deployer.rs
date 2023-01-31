@@ -4,6 +4,8 @@ use web3::{contract::{tokens::Tokenize}, types::{TransactionRequest, Transaction
 
 use crate::{CPCWeb3, types::{Options, TransactionParameters}, address::Address, error::StdError, accounts::Account, transport::CPCHttp};
 
+use super::Contract;
+
 #[derive(Debug, Clone)]
 pub struct Deployer<'a> {
     pub(crate) web3: &'a CPCWeb3,
@@ -41,7 +43,7 @@ impl<'a> Deployer<'a> {
         params: P,
         from: &Address,
         send: impl FnOnce(TransactionRequest) -> Ft,
-    ) -> Result<web3::contract::Contract<CPCHttp>, StdError>
+    ) -> Result<Contract, StdError>
     where
         P: Tokenize,
         V: AsRef<str>,
@@ -94,7 +96,7 @@ impl<'a> Deployer<'a> {
             // If the `status` field is not present we use the presence of `contract_address` to
             // determine if deployment was successfull.
             _ => match receipt.contract_address {
-                Some(address) => Ok(web3::contract::Contract::new(eth, address, abi)),
+                Some(address) => Ok(Contract::new(web3::contract::Contract::new(eth, address, abi))),
                 None => Err(format!("Contract deploy failed: {}", receipt.transaction_hash).into()),
             },
         }
@@ -105,7 +107,7 @@ impl<'a> Deployer<'a> {
         params: P,
         from: &Account,
         chain_id: Option<u64>,
-    ) -> Result<web3::contract::Contract<CPCHttp>, StdError>
+    ) -> Result<Contract, StdError>
     where
         P: Tokenize,
         V: AsRef<str>
