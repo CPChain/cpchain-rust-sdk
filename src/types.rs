@@ -2,8 +2,6 @@ use rlp::RlpStream;
 use serde::{Deserialize, Serialize};
 use web3::{signing::{self, Signature}, types::{SignedTransaction, CallRequest}};
 
-use crate::address::Address;
-
 pub type Result = web3::Result;
 pub type U256 = web3::types::U256;
 pub type H160 = web3::types::H160;
