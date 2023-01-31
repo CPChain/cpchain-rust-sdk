@@ -9,6 +9,7 @@ pub type U256 = web3::types::U256;
 pub type H160 = web3::types::H160;
 pub type H256 = web3::types::H256;
 pub type Bytes = web3::types::Bytes;
+pub type Options = web3::contract::Options;
 
 #[derive(Debug, Clone, Deserialize, Serialize)]
 pub struct TransactionParameters {
@@ -18,7 +19,7 @@ pub struct TransactionParameters {
     /// Transaction nonce (None for account transaction count)
     pub nonce: U256,
     /// To address
-    pub to: Address,
+    pub to: Option<H160>,
     /// Supplied gas
     pub gas: U256,
     /// Gas price (None for estimated gas price)
@@ -36,7 +37,7 @@ impl TransactionParameters {
     pub fn new(
         chain_id: u64,
         nonce: U256,
-        to: Address,
+        to: Option<H160>,
         gas: U256,
         gas_price: U256,
         value: U256,
@@ -56,7 +57,7 @@ impl TransactionParameters {
     pub fn to_call_request(&self) -> CallRequest {
         CallRequest {
             from: None,
-            to: Some(self.to.h160),
+            to: self.to,
             gas: None,
             gas_price: Some(self.gas_price),
             value: Some(self.value),
@@ -73,7 +74,7 @@ impl TransactionParameters {
         stream.append(&self.nonce);
         stream.append(&self.gas_price);
         stream.append(&self.gas);
-        stream.append(&self.to.h160);
+        stream.append(&self.to.unwrap_or(H160::default()));
         stream.append(&self.value);
         stream.append(&self.data.0);
     }

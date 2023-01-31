@@ -10,3 +10,4 @@ pub mod cpc_aes;
 pub mod keystore;
 pub mod hd;
 pub mod accounts;
+pub mod error;

@@ -11,7 +11,7 @@ use crate::{
 
 #[derive(Debug, Clone)]
 pub struct CPCWeb3 {
-    web3: Web3<CPCHttp>,
+    pub web3: Web3<CPCHttp>,
 }
 
 impl CPCWeb3 {
@@ -36,7 +36,7 @@ impl CPCWeb3 {
             .await
     }
 
-    pub async fn balance(&self, address: Address) -> Result<U256, Error> {
+    pub async fn balance(&self, address: &Address) -> Result<U256, Error> {
         let balance = self.web3.eth().balance(address.h160, None).await?;
         Ok(balance)
     }
@@ -160,7 +160,7 @@ mod tests {
     async fn test_get_balance() {
         let web3 = CPCWeb3::new("http://192.168.0.164:8501").unwrap();
         let balance = web3
-            .balance(Address::from_str("0x7D491C482eBa270700b584888f864177205c5159").unwrap())
+            .balance(&Address::from_str("0x7D491C482eBa270700b584888f864177205c5159").unwrap())
             .await
             .unwrap();
         println!("{:?}", balance.as_u128());
@@ -206,7 +206,7 @@ mod tests {
         let tx_object = TransactionParameters::new(
             41,
             nonce,
-            Address::from_str("0x1455D180E3adE94ebD9cC324D22a9065d1F5F575").unwrap(),
+            Some(Address::from_str("0x1455D180E3adE94ebD9cC324D22a9065d1F5F575").unwrap().h160),
             300000.into(),
             gas_price,
             U256::exp10(17), //0.1 cpc

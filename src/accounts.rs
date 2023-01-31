@@ -2,7 +2,7 @@ use bip39::Mnemonic;
 use secp256k1::{rand, PublicKey, Secp256k1, SecretKey};
 use web3::{signing, types::Address as Web3Address};
 
-use crate::{address::Address, hd::HDNode, utils};
+use crate::{address::Address, hd::HDNode, utils, keystore::Keystore};
 
 /// Account
 ///
@@ -57,6 +57,11 @@ impl Account {
     pub fn from_phrase(phrase: &str, derive_path: Option<String>) -> Result<Account, Box<dyn std::error::Error>> {
         let hd_node = HDNode::from_phrase(phrase)?;
         Account::_new(derive_path, &hd_node)
+    }
+
+    pub fn from_keystore(json: &str, password: &str) -> Result<Account, Box<dyn std::error::Error + Send + Sync>> {
+        let ks = Keystore::from(json.to_string());
+        ks.decrypt(password)
     }
 
     fn from_secert_key(secret_key: SecretKey) -> Self {
