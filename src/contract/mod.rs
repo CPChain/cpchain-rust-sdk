@@ -104,6 +104,7 @@ impl Contract {
     pub async fn signed_call(
         &self,
         web3: &CPCWeb3,
+        chain_id: u32,
         func: &str,
         params: impl Tokenize,
         options: Options,
@@ -123,7 +124,7 @@ impl Contract {
             None => web3.transaction_count(&account.address).await?,
         };
         let tx = TransactionParameters::new(
-            337,
+            chain_id.into(),
             nonce,
             Some(self.address().h160),
             options.gas.unwrap_or(300_000.into()),
@@ -222,6 +223,7 @@ mod tests {
         let hash = c
             .signed_call(
                 &web3,
+                337,
                 "sendCoin",
                 (
                     H160::from_str("0xFD10B944FFC7Be13516C003eeE6cEf7335d031e9").unwrap(),
