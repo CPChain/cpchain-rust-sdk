@@ -74,7 +74,11 @@ impl TransactionParameters {
         stream.append(&self.nonce);
         stream.append(&self.gas_price);
         stream.append(&self.gas);
-        stream.append(&self.to.unwrap_or(H160::default()));
+        if let Some(to) = self.to {
+            stream.append(&to);
+        } else {
+            stream.append(&"");
+        }
         stream.append(&self.value);
         stream.append(&self.data.0);
     }

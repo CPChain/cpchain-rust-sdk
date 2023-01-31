@@ -33,7 +33,6 @@ impl<'a> Deployer<'a> {
     }
     pub fn options(mut self, options: Options) -> Self {
         self.opts = options;
-        // let contract = Contract::deploy(eth, json)
         self
     }
     async fn do_execute<P, V, Ft>(
@@ -112,7 +111,7 @@ impl<'a> Deployer<'a> {
         V: AsRef<str>
     {
         let web3 = self.web3.clone();
-        
+
         match self.do_execute(code, params, &from.address, move |tx| async move {
             let nonce = match tx.nonce {
                 Some(nonce) => nonce,
@@ -131,7 +130,6 @@ impl<'a> Deployer<'a> {
                 .data
                 .expect("Tried to deploy a contract but transaction data wasn't set")
             );
-            println!("{:?}", tx);
             let signed_tx = web3.sign_transaction(&from, &tx).await.unwrap();
             let tx_hash = web3.submit_signed_raw_tx(&signed_tx).await.unwrap();
             web3.wait_tx(&tx_hash).await
