@@ -5,7 +5,13 @@ use web3::{
     ethabi,
 };
 
-use crate::{address::Address, transport::CPCHttp, types::Options, CPCWeb3};
+use crate::{
+    accounts::Account,
+    address::Address,
+    transport::CPCHttp,
+    types::{Bytes, Options, TransactionParameters, H256},
+    CPCWeb3,
+};
 
 use self::deployer::Deployer;
 
@@ -93,14 +99,52 @@ impl Contract {
     {
         self.contract.query(func, params, from, options, block)
     }
+
+    /// Call functions of this contract
+    pub async fn signed_call(
+        &self,
+        web3: &CPCWeb3,
+        func: &str,
+        params: impl Tokenize,
+        options: Options,
+        account: &Account,
+    ) -> web3::contract::Result<H256> {
+        // let signed = self.sign(func, params, options, key).await?;
+        let fn_data = self
+            .contract
+            .abi()
+            .function(func)
+            .and_then(|function| function.encode_input(&params.into_tokens()))
+            // TODO [ToDr] SendTransactionWithConfirmation should support custom error type (so that we can return
+            // `contract::Error` instead of more generic `Error`.
+            .map_err(|err| web3::error::Error::Decoder(format!("{:?}", err)))?;
+        let nonce = match options.nonce {
+            Some(nonce) => nonce,
+            None => web3.transaction_count(&account.address).await?,
+        };
+        let tx = TransactionParameters::new(
+            337,
+            nonce,
+            Some(self.address().h160),
+            options.gas.unwrap_or(300_000.into()),
+            options.gas_price.unwrap_or(web3.gas_price().await?),
+            options.value.unwrap_or(0.into()),
+            Bytes::from(fn_data),
+        );
+        let signed_tx = web3.sign_transaction(&account, &tx).await?;
+        let hash = web3.submit_signed_raw_tx(&signed_tx).await?;
+        Ok(hash)
+    }
 }
 
 #[cfg(test)]
 mod tests {
+    use std::str::FromStr;
+
     use super::*;
     use crate::{
         accounts::Account,
-        types::{Options, U256},
+        types::{Options, H160, U256},
         CPCWeb3,
     };
 
@@ -108,7 +152,8 @@ mod tests {
         Account::from_keystore(
             include_str!("../../keystore/0x6CBea203F4061855247cea3843E2e5957C4CD428.json"),
             "123456",
-        ).unwrap()
+        )
+        .unwrap()
     }
 
     #[tokio::test]
@@ -164,5 +209,30 @@ mod tests {
         );
         let balance: U256 = r.await.unwrap();
         println!("balance: {:?}", balance);
+    }
+    #[tokio::test]
+    async fn test_call() {
+        let web3 = CPCWeb3::new("https://civilian.cpchain.io").unwrap();
+        let account = load_account();
+        let c = Contract::from_address(
+            &web3,
+            &Address::from_str("0x8b3b22339466a3c8fd9b78c309aebfbf0bb95a9a").unwrap(),
+            include_bytes!("../../fixtures/contracts/Metacoin.abi"),
+        );
+        let hash = c
+            .signed_call(
+                &web3,
+                "sendCoin",
+                (
+                    H160::from_str("0xFD10B944FFC7Be13516C003eeE6cEf7335d031e9").unwrap(),
+                    U256::from(8),
+                ),
+                Options::default(),
+                &account,
+            )
+            .await
+            .unwrap();
+        let receipt = web3.wait_tx(&hash).await.unwrap();
+        println!("{:?}", receipt);
     }
 }
