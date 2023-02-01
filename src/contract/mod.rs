@@ -159,10 +159,12 @@ impl Contract {
         if to_block.is_some() {
             builder = builder.to_block(to_block.unwrap().into());
         }
+        let e = self.contract.abi().event(event_name).unwrap();
         let filter = builder.build();
         // 如果事件字段是 indexed 的，则会在 topics 中，其余则在 data 字段中按字节排列
         let logs = web3.web3.eth().logs(filter).await.unwrap();
-        Ok(Event::from_logs(&logs)?)
+        println!("{:?}", logs);
+        Ok(Event::from_logs(e, &logs)?)
     }
 }
 
