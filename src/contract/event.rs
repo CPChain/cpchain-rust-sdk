@@ -1,5 +1,3 @@
-use std::slice::Iter;
-
 use web3::{types::Log, ethabi::{self, ParamType}};
 
 use crate::{types::{H256, U256, H160, U64}, error::StdError};
@@ -9,6 +7,7 @@ use crate::{types::{H256, U256, H160, U64}, error::StdError};
 pub enum EventParam {
     Address(H160),
     U256(U256),
+    String(String),
 }
 
 impl EventParam {
@@ -25,26 +24,41 @@ impl EventParam {
             _ => Err(format!("Unsupported event parameter's kind: {:?}", param.kind).into())
         }
     }
-    pub fn from_bytes(param: &ethabi::EventParam, bytes: &mut Iter<u8>) -> Result<Self, StdError> {
+    fn take_index<'a>(index: &usize, bytes: &'a Vec<u8>) -> &'a [u8] {
+        let begin = index * 32;
+        let bytes: &[u8] = &bytes[begin..begin+32];
+        bytes
+    }
+    pub fn from_bytes(param: &ethabi::EventParam, index: usize, bytes: &Vec<u8>) -> Result<Self, StdError> {
         match param.kind {
             ParamType::Address => {
-                let bytes: Vec<u8> = bytes.take(32).map(|u| u.clone()).collect();
-                Ok(EventParam::Address(H160::from(H256::from_slice(bytes.as_slice()))))
+                Ok(EventParam::Address(H160::from(H256::from_slice(EventParam::take_index(&index, bytes)))))
             }
             ParamType::Uint(size) => {
                 match size {
                     256 => {
-                        let bytes: Vec<u8> = bytes.take(32).map(|u| u.clone()).collect();
-                        Ok(EventParam::U256(U256::from(bytes.as_slice())))
+                        Ok(EventParam::U256(U256::from(EventParam::take_index(&index, bytes))))
                     }
                     _ => Err(format!("Unsupported event parameter's kind: u{:?}", size).into())
                 }
+            }
+            ParamType::String => {
+                // Get begin
+                let begin = U256::from(EventParam::take_index(&index, bytes));
+                let index = begin.as_usize() / 32;
+                let length = U256::from(EventParam::take_index(&index, bytes)).as_usize();
+                let start = (index + 1) * 32;
+                let bytes = &bytes[start..(start + length)];
+                Ok(EventParam::String(String::from_utf8_lossy(bytes).to_string()))
             }
             _ => Err(format!("Unsupported event parameter's kind: {:?}", param.kind).into())
         }
     }
 }
 
+/// Event
+/// 
+/// https://goethereumbook.org/zh/event-read/
 #[derive(Debug, Clone)]
 pub struct Event {
     pub contract_address: H160,
@@ -60,8 +74,8 @@ impl Event {
     pub fn from(event: &ethabi::Event, log: &Log) -> Result<Self, StdError> {
         let mut params = Vec::new();
         let mut current: usize = 0;
-        let data = log.data.0.clone();
-        let mut it = data.iter();
+        let data = &log.data.0;
+
         // topics
         for i in 1..log.topics.len() {
             let topic = log.topics[i];
@@ -70,9 +84,11 @@ impl Event {
             params.push(param);
             current += 1;
         }
+        // Parse data
         while current < event.inputs.len() {
             let param = &event.inputs[current];
-            let param = EventParam::from_bytes(param, &mut it)?;
+            let index = current + 1 - log.topics.len();
+            let param = EventParam::from_bytes(param, index, data)?;
             params.push(param);
             current += 1;
         }

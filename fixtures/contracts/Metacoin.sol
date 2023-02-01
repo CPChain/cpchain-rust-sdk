@@ -9,7 +9,7 @@ pragma solidity ^0.4.24;
 contract MetaCoin {
     mapping(address => uint256) balances;
 
-    event Transfer(address indexed _from, address _to, uint256 _value);
+    event Transfer(address indexed _from, address _to, uint256 _value, string s, string s2, string s3);
 
     constructor() public {
         balances[tx.origin] = 10000;
@@ -22,7 +22,7 @@ contract MetaCoin {
         if (balances[msg.sender] < amount) return false;
         balances[msg.sender] -= amount;
         balances[receiver] += amount;
-        emit Transfer(msg.sender, receiver, amount);
+        emit Transfer(msg.sender, receiver, amount, "Hello", "world", "xxxx");
         return true;
     }
 

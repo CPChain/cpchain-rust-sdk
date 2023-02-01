@@ -205,7 +205,7 @@ mod tests {
         .options(Options::with(|opt| {
             opt.value = Some(0.into());
             opt.gas_price = Some((180_000_000_000 as u64).into());
-            opt.gas = Some(300_000.into());
+            opt.gas = Some(3000_000.into());
         }))
         .sign_with_key_and_execute(bytecode, (), &account, 337.into())
         .await
@@ -228,7 +228,7 @@ mod tests {
         let account = load_account();
         let c = Contract::from_address(
             &web3,
-            &Address::from_str("0x8b3b22339466a3c8fd9b78c309aebfbf0bb95a9a").unwrap(),
+            &Address::from_str("0x18b1385f172fed71d25d4faf306fb064131e8b4c").unwrap(),
             include_bytes!("../../fixtures/contracts/Metacoin.abi"),
         );
         let r = c.query(
@@ -247,7 +247,7 @@ mod tests {
         let account = load_account();
         let c = Contract::from_address(
             &web3,
-            &Address::from_str("0x93936b4d5a51ca26b03e23ca6688c68ad1007578").unwrap(),
+            &Address::from_str("0xd4b1b7e0c2af6bdb603e754d11fef3ceb1cadfbd").unwrap(),
             include_bytes!("../../fixtures/contracts/Metacoin.abi"),
         );
         let hash = c
@@ -273,7 +273,7 @@ mod tests {
         let web3 = CPCWeb3::new("https://civilian.cpchain.io").unwrap();
         let c = Contract::from_address(
             &web3,
-            &Address::from_str("0x93936b4d5a51ca26b03e23ca6688c68ad1007578").unwrap(),
+            &Address::from_str("0xd4b1b7e0c2af6bdb603e754d11fef3ceb1cadfbd").unwrap(),
             include_bytes!("../../fixtures/contracts/Metacoin.abi"),
         );
         let events = c.events(&web3, "Transfer", Some(0), None).await.unwrap();

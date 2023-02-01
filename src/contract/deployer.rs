@@ -92,12 +92,12 @@ impl<'a> Deployer<'a> {
         };
         let receipt = send(tx).await?;
         match receipt.status {
-            Some(status) if status == 0.into() => Err(format!("Contract deploy failed: {}", receipt.transaction_hash).into()),
+            Some(status) if status == 0.into() => Err(format!("Status is zero, contract deploy failed: {}", receipt.transaction_hash).into()),
             // If the `status` field is not present we use the presence of `contract_address` to
             // determine if deployment was successfull.
             _ => match receipt.contract_address {
                 Some(address) => Ok(Contract::new(web3::contract::Contract::new(eth, address, abi))),
-                None => Err(format!("Contract deploy failed: {}", receipt.transaction_hash).into()),
+                None => Err(format!("Contract address is none, contract deploy failed: {}", receipt.transaction_hash).into()),
             },
         }
     }
