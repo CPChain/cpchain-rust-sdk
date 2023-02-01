@@ -4,6 +4,8 @@ use web3::{signing::{self, Signature}, types::{SignedTransaction, CallRequest}};
 
 pub type Result = web3::Result;
 pub type U256 = web3::types::U256;
+pub type U128 = web3::types::U128;
+pub type U64 = web3::types::U64;
 pub type H160 = web3::types::H160;
 pub type H256 = web3::types::H256;
 pub type Bytes = web3::types::Bytes;

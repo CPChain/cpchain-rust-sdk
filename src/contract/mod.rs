@@ -2,7 +2,7 @@ use std::future::Future;
 
 use web3::{
     contract::tokens::{Detokenize, Tokenize},
-    ethabi,
+    ethabi, types::FilterBuilder,
 };
 
 use crate::{
@@ -10,15 +10,16 @@ use crate::{
     address::Address,
     transport::CPCHttp,
     types::{Bytes, Options, TransactionParameters, H256},
-    CPCWeb3,
+    CPCWeb3, error::StdError,
 };
 
-use self::deployer::Deployer;
+use self::{deployer::Deployer, event::Event};
 
 mod deployer;
+mod event;
 
 pub struct Contract {
-    pub contract: web3::contract::Contract<CPCHttp>,
+    pub(crate) contract: web3::contract::Contract<CPCHttp>,
 }
 
 impl Contract {
@@ -29,6 +30,12 @@ impl Contract {
         let abi = ethabi::Contract::load(abi_json).unwrap();
         let eth = web3.web3.eth();
         Contract::new(web3::contract::Contract::new(eth, address.h160, abi))
+    }
+    pub fn event_sig(&self, event: &str) -> Option<H256> {
+        match self.contract.abi().event(event) {
+            Ok(e) => Some(e.signature()),
+            Err(_) => None
+        }
     }
     /// Deploy smart contract
     /// e.g.
@@ -136,6 +143,27 @@ impl Contract {
         let hash = web3.submit_signed_raw_tx(&signed_tx).await?;
         Ok(hash)
     }
+
+    pub async fn events(&self, web3: &CPCWeb3, event_name: &str, from_block: Option<u64>, to_block: Option<u64>) -> Result<Vec<Event>, StdError> {
+        let mut builder = FilterBuilder::default()
+            .address(vec![self.address().h160])
+            .topics(
+                Some(vec![self.event_sig(event_name).unwrap()]),
+                None,
+                None,
+                None,
+            );
+        if from_block.is_some() {
+            builder = builder.from_block(from_block.unwrap().into());
+        }
+        if to_block.is_some() {
+            builder = builder.to_block(to_block.unwrap().into());
+        }
+        let filter = builder.build();
+        // 如果事件字段是 indexed 的，则会在 topics 中，其余则在 data 字段中按字节排列
+        let logs = web3.web3.eth().logs(filter).await.unwrap();
+        Ok(Event::from_logs(&logs)?)
+    }
 }
 
 #[cfg(test)]
@@ -158,7 +186,7 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn test_contracts() {
+    async fn test_deploy_contract() {
         let bytecode = include_str!("../../fixtures/contracts/Metacoin.bin").trim_end();
         let web3 = CPCWeb3::new("https://civilian.cpchain.io").unwrap();
         let account = load_account();
@@ -217,7 +245,7 @@ mod tests {
         let account = load_account();
         let c = Contract::from_address(
             &web3,
-            &Address::from_str("0x8b3b22339466a3c8fd9b78c309aebfbf0bb95a9a").unwrap(),
+            &Address::from_str("0x93936b4d5a51ca26b03e23ca6688c68ad1007578").unwrap(),
             include_bytes!("../../fixtures/contracts/Metacoin.abi"),
         );
         let hash = c
@@ -236,5 +264,18 @@ mod tests {
             .unwrap();
         let receipt = web3.wait_tx(&hash).await.unwrap();
         println!("{:?}", receipt);
+    }
+
+    #[tokio::test]
+    async fn test_events() {
+        let web3 = CPCWeb3::new("https://civilian.cpchain.io").unwrap();
+        let c = Contract::from_address(
+            &web3,
+            &Address::from_str("0x93936b4d5a51ca26b03e23ca6688c68ad1007578").unwrap(),
+            include_bytes!("../../fixtures/contracts/Metacoin.abi"),
+        );
+        let events = c.events(&web3, "Transfer", Some(0), None).await.unwrap();
+        println!("{:?}", events);
+        println!("Length {:?}", events.len())
     }
 }
