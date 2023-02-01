@@ -7,7 +7,13 @@ use crate::{types::{H256, U256, H160, U64}, error::StdError};
 pub enum EventParam {
     Address(H160),
     U256(U256),
+    U128(u128),
+    U64(u64),
+    U32(u32),
+    U16(u16),
+    U8(u8),
     String(String),
+    Bool(bool)
 }
 
 impl EventParam {
@@ -39,6 +45,21 @@ impl EventParam {
                     256 => {
                         Ok(EventParam::U256(U256::from(EventParam::take_index(&index, bytes))))
                     }
+                    128 => {
+                        Ok(EventParam::U128(U256::from(EventParam::take_index(&index, bytes)).as_u128()))
+                    }
+                    64 => {
+                        Ok(EventParam::U64(U256::from(EventParam::take_index(&index, bytes)).as_u64()))
+                    }
+                    32 => {
+                        Ok(EventParam::U32(U256::from(EventParam::take_index(&index, bytes)).as_u32()))
+                    }
+                    16 => {
+                        Ok(EventParam::U16(U256::from(EventParam::take_index(&index, bytes)).as_usize() as u16))
+                    }
+                    8 => {
+                        Ok(EventParam::U8(U256::from(EventParam::take_index(&index, bytes)).as_usize() as u8))
+                    }
                     _ => Err(format!("Unsupported event parameter's kind: u{:?}", size).into())
                 }
             }
@@ -50,6 +71,9 @@ impl EventParam {
                 let start = (index + 1) * 32;
                 let bytes = &bytes[start..(start + length)];
                 Ok(EventParam::String(String::from_utf8_lossy(bytes).to_string()))
+            }
+            ParamType::Bool => {
+                Ok(EventParam::Bool(U256::from(EventParam::take_index(&index, bytes)).as_usize() == 1))
             }
             _ => Err(format!("Unsupported event parameter's kind: {:?}", param.kind).into())
         }
