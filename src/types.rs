@@ -13,7 +13,8 @@ pub type Options = web3::contract::Options;
 pub type Transaction = web3::types::Transaction;
 pub type TransactionReceipt = web3::types::TransactionReceipt;
 pub type TransactionLog = web3::types::Log;
-pub type Block = web3::types::Block<Transaction>;
+pub type BlockWithHash = web3::types::Block<H256>;
+pub type BlockWithTx = web3::types::Block<Transaction>;
 
 #[derive(Debug, Clone, Deserialize, Serialize)]
 pub struct TransactionParameters {
