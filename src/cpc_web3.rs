@@ -33,10 +33,14 @@ impl CPCWeb3 {
         self.web3.eth().block(BlockId::Number(number)).await
     }
 
-    pub async fn block_with_txs(&self, number: u32) -> Result<Option<Block<Transaction>>, Error> {
+    pub async fn block_with_txs(&self, number: Option<u32>) -> Result<Option<Block<Transaction>>, Error> {
+        let number = match number {
+            Some(n) => n.into(),
+            None => BlockNumber::Latest,
+        };
         self.web3
             .eth()
-            .block_with_txs(BlockId::Number(number.into()))
+            .block_with_txs(BlockId::Number(number))
             .await
     }
 
@@ -123,14 +127,14 @@ mod tests {
     #[tokio::test]
     async fn test_get_block_with_txs() {
         let web3 = CPCWeb3::new("https://civilian.cpchain.io").unwrap();
-        let block = web3.block_with_txs(100).await.unwrap();
+        let block = web3.block_with_txs(Some(100)).await.unwrap();
         assert!(block.is_some());
         let block = block.unwrap();
         assert!(block.number.unwrap().as_u32() == 100);
         assert!(block.transactions.len() == 0);
         assert!(block.size.unwrap().as_u32() == 1263);
         assert!(block.hash.unwrap().to_string().to_lowercase() == "0x1b91…4aef");
-        let block = web3.block_with_txs(10504047).await.unwrap();
+        let block = web3.block_with_txs(Some(10504047)).await.unwrap();
         assert!(block.is_some());
         let block = block.unwrap();
         assert!(block.number.unwrap().as_u32() == 10504047);
@@ -149,7 +153,7 @@ mod tests {
         assert!(tx.hash.to_string() == "0xc5b0…5e62");
 
         // Get unexists block
-        let block = web3.block_with_txs(100000000).await.unwrap();
+        let block = web3.block_with_txs(Some(100000000)).await.unwrap();
         assert!(block.is_none());
     }
 
