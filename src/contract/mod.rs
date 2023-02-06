@@ -16,7 +16,7 @@ use crate::{
 use self::{deployer::Deployer, event::Event};
 
 mod deployer;
-mod event;
+pub mod event;
 
 pub struct Contract {
     pub(crate) contract: web3::contract::Contract<CPCHttp>,

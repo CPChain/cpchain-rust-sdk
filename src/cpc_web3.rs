@@ -1,7 +1,7 @@
 use std::time::{Duration, Instant};
 
 use web3::{
-    types::{Block, BlockId, SignedTransaction, Transaction, TransactionReceipt, H160, H256, U256},
+    types::{Block, BlockId, SignedTransaction, Transaction, TransactionReceipt, H160, H256, U256, BlockNumber},
     Error, Web3,
 };
 
@@ -25,8 +25,12 @@ impl CPCWeb3 {
         Ok(current_block.as_u64())
     }
 
-    pub async fn block(&self, number: u32) -> Result<Option<Block<H256>>, Error> {
-        self.web3.eth().block(BlockId::Number(number.into())).await
+    pub async fn block(&self, number: Option<u32>) -> Result<Option<Block<H256>>, Error> {
+        let number = match number {
+            Some(n) => n.into(),
+            None => BlockNumber::Latest,
+        };
+        self.web3.eth().block(BlockId::Number(number)).await
     }
 
     pub async fn block_with_txs(&self, number: u32) -> Result<Option<Block<Transaction>>, Error> {
@@ -152,8 +156,15 @@ mod tests {
     #[tokio::test]
     async fn test_get_block() {
         let web3 = CPCWeb3::new("https://civilian.cpchain.io").unwrap();
-        let block = web3.block(100).await.unwrap().unwrap();
+        let block = web3.block(Some(100)).await.unwrap().unwrap();
         assert!(block.number.unwrap().as_u32() == 100);
+    }
+
+    #[tokio::test]
+    async fn test_get_latest_block() {
+        let web3 = CPCWeb3::new("https://civilian.cpchain.io").unwrap();
+        let block = web3.block(None).await.unwrap().unwrap();
+        assert!(block.number.unwrap().as_u32() > 100);
     }
 
     #[tokio::test]
