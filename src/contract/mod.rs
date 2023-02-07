@@ -9,7 +9,7 @@ use crate::{
     accounts::Account,
     address::Address,
     transport::CPCHttp,
-    types::{Bytes, Options, TransactionParameters, H256},
+    types::{Bytes, Options, TransactionParameters, H256, TransactionLog},
     CPCWeb3, error::StdError,
 };
 
@@ -163,8 +163,13 @@ impl Contract {
         let filter = builder.build();
         // 如果事件字段是 indexed 的，则会在 topics 中，其余则在 data 字段中按字节排列
         let logs = web3.web3.eth().logs(filter).await.unwrap();
-        println!("{:?}", logs);
         Ok(Event::from_logs(e, &logs)?)
+    }
+
+    pub fn parse_log(abi_json: &[u8], event_name: &str, log: &TransactionLog) -> Result<Event, StdError> {
+        let abi = ethabi::Contract::load(abi_json)?;
+        let e = abi.event(event_name)?;
+        Event::from(e, &log)
     }
 }
 
