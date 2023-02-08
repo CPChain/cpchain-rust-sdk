@@ -2,7 +2,7 @@ use std::future::Future;
 
 use web3::{
     contract::tokens::{Detokenize, Tokenize},
-    ethabi, types::FilterBuilder,
+    ethabi, types::{FilterBuilder, Log},
 };
 
 use crate::{
@@ -144,7 +144,7 @@ impl Contract {
         Ok(hash)
     }
 
-    pub async fn events(&self, web3: &CPCWeb3, event_name: &str, from_block: Option<u64>, to_block: Option<u64>) -> Result<Vec<Event>, StdError> {
+    pub async fn logs(&self, web3: &CPCWeb3, event_name: &str, from_block: Option<u64>, to_block: Option<u64>) -> Result<Vec<Log>, StdError> {
         let mut builder = FilterBuilder::default()
             .address(vec![self.address().h160])
             .topics(
@@ -159,10 +159,17 @@ impl Contract {
         if to_block.is_some() {
             builder = builder.to_block(to_block.unwrap().into());
         }
-        let e = self.contract.abi().event(event_name).unwrap();
         let filter = builder.build();
+        match web3.web3.eth().logs(filter).await {
+            Ok(logs) => Ok(logs),
+            Err(e) => Err(format!("Get logs failed: {}", e).into())
+        }
+    }
+
+    pub async fn events(&self, web3: &CPCWeb3, event_name: &str, from_block: Option<u64>, to_block: Option<u64>) -> Result<Vec<Event>, StdError> {
+        let logs = self.logs(web3, event_name, from_block, to_block).await?;
+        let e = self.contract.abi().event(event_name).unwrap();
         // 如果事件字段是 indexed 的，则会在 topics 中，其余则在 data 字段中按字节排列
-        let logs = web3.web3.eth().logs(filter).await.unwrap();
         Ok(Event::from_logs(e, &logs)?)
     }
 

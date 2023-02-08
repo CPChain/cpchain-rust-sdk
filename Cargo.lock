@@ -259,7 +259,7 @@ dependencies = [
 
 [[package]]
 name = "cpchain-rust-sdk"
-version = "0.1.10"
+version = "0.1.11"
 dependencies = [
  "aes",
  "cpc-bip39",
