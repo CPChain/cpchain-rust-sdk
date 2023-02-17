@@ -85,6 +85,7 @@ impl EventParam {
 /// https://goethereumbook.org/zh/event-read/
 #[derive(Debug, Clone)]
 pub struct Event {
+    pub name: String,
     pub contract_address: H160,
     pub signature: H256,
     pub params: Vec<EventParam>,
@@ -117,6 +118,7 @@ impl Event {
             current += 1;
         }
         Ok(Self {
+            name: event.name.clone(),
             contract_address: log.address,
             signature: log.topics[0],
             params,
