@@ -26,10 +26,28 @@ impl EventParam {
             },
             ParamType::Uint(size) => {
                 match size {
-                    _ => Err(format!("Unsupported event parameter's kind: u{:?}", size).into())
+                    256 => {
+                        Ok(EventParam::U256(U256::from(topic.0)))
+                    }
+                    128 => {
+                        Ok(EventParam::U128(U256::from(topic.0).as_u128()))
+                    }
+                    64 => {
+                        Ok(EventParam::U64(U256::from(topic.0).as_u64()))
+                    }
+                    32 => {
+                        Ok(EventParam::U32(U256::from(topic.0).as_u64() as u32))
+                    }
+                    16 => {
+                        Ok(EventParam::U16(U256::from(topic.0).as_u64() as u16))
+                    }
+                    8 => {
+                        Ok(EventParam::U8(U256::from(topic.0).as_u64() as u8))
+                    }
+                    _ => Err(format!("Unsupported event(from topic) parameter's kind: u{:?}", size).into())
                 }
             }
-            _ => Err(format!("Unsupported event parameter's kind: {:?}", param.kind).into())
+            _ => Err(format!("Unsupported event(from topic) parameter's kind: {:?}", param.kind).into())
         }
     }
     fn take_index<'a>(index: &usize, bytes: &'a Vec<u8>) -> &'a [u8] {
