@@ -259,7 +259,7 @@ mod tests {
         let account = load_account();
         let c = Contract::from_address(
             &web3,
-            &Address::from_str("0xdf7db491b07e8052a43095dd93385d07e7c43e6c").unwrap(),
+            &Address::from_str("0xcbefb53f853bd7ea355c1e48c250cafe60d24e67").unwrap(), // 0xdf7db491b07e8052a43095dd93385d07e7c43e6c
             include_bytes!("../../fixtures/contracts/Metacoin.abi"),
         );
         let hash = c
@@ -285,7 +285,7 @@ mod tests {
         let web3 = CPCWeb3::new("https://civilian.cpchain.io").unwrap();
         let c = Contract::from_address(
             &web3,
-            &Address::from_str("0xdf7db491b07e8052a43095dd93385d07e7c43e6c").unwrap(),
+            &Address::from_str("0xcbefb53f853bd7ea355c1e48c250cafe60d24e67").unwrap(),
             include_bytes!("../../fixtures/contracts/Metacoin.abi"),
         );
         let events = c.events(&web3, "Transfer", Some(0), None).await.unwrap();

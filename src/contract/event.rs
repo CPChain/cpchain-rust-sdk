@@ -12,6 +12,8 @@ pub enum EventParam {
     U32(u32),
     U16(u16),
     U8(u8),
+    I8(i8),
+    I32(i32),
     String(String),
     Bool(bool)
 }
@@ -61,6 +63,20 @@ impl EventParam {
                         Ok(EventParam::U8(U256::from(EventParam::take_index(&index, bytes)).as_usize() as u8))
                     }
                     _ => Err(format!("Unsupported event parameter's kind: u{:?}", size).into())
+                }
+            }
+            ParamType::Int(size) => {
+                match size {
+                    32 => {
+                        let i = EventParam::take_index(&index, bytes);
+                        let size = i.len();
+                        Ok(EventParam::I32(i32::from_be_bytes([i[size-4], i[size-3], i[size-2], i[size-1]])))
+                    }
+                    8 => {
+                        let i = EventParam::take_index(&index, bytes);
+                        Ok(EventParam::I8(i8::from_be_bytes([i[i.len()-1]; 1])))
+                    }
+                    _ => Err(format!("Unsupported event parameter's kind: i{:?}", size).into())
                 }
             }
             ParamType::String => {
