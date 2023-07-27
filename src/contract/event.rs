@@ -55,6 +55,11 @@ impl EventParam {
         let bytes: &[u8] = &bytes[begin..begin+32];
         bytes
     }
+    fn take_index2<'a>(begin: usize, bytes: &'a Vec<u8>) -> &'a [u8] {
+        let end = begin + 32;
+        let bytes: &[u8] = &bytes[begin..end];
+        bytes
+    }
     pub fn from_bytes(param: &ethabi::EventParam, index: usize, bytes: &Vec<u8>) -> Result<Self, StdError> {
         match param.kind {
             ParamType::Address => {
@@ -100,9 +105,9 @@ impl EventParam {
             ParamType::String => {
                 // Get begin
                 let begin = U256::from(EventParam::take_index(&index, bytes));
-                let index = begin.as_usize() / 32;
-                let length = U256::from(EventParam::take_index(&index, bytes)).as_usize();
-                let start = (index + 1) * 32;
+                let length = U256::from(EventParam::take_index2(begin.as_usize(), bytes));
+                let length = length.as_usize();
+                let start = begin.as_usize() + 32;
                 let bytes = &bytes[start..(start + length)];
                 Ok(EventParam::String(String::from_utf8_lossy(bytes).to_string()))
             }

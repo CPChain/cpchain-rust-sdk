@@ -1,0 +1,76 @@
+[
+  {
+    "constant": false,
+    "inputs": [{ "name": "addr", "type": "address" }],
+    "name": "setWhiteList",
+    "outputs": [],
+    "payable": false,
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "constant": true,
+    "inputs": [],
+    "name": "nextId",
+    "outputs": [{ "name": "", "type": "uint64" }],
+    "payable": false,
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "constant": false,
+    "inputs": [
+      { "name": "name", "type": "string" },
+      { "name": "org_name", "type": "string" },
+      { "name": "version", "type": "string" },
+      { "name": "content_hash", "type": "uint256" }
+    ],
+    "name": "createTerm",
+    "outputs": [{ "name": "", "type": "uint64" }],
+    "payable": false,
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "constant": false,
+    "inputs": [
+      { "name": "id", "type": "uint64" },
+      { "name": "version", "type": "string" },
+      { "name": "content_hash", "type": "uint256" }
+    ],
+    "name": "addTermVersion",
+    "outputs": [],
+    "payable": false,
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "constant": false,
+    "inputs": [{ "name": "id", "type": "uint64" }],
+    "name": "removeTerm",
+    "outputs": [],
+    "payable": false,
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "anonymous": false,
+    "inputs": [{ "indexed": true, "name": "id", "type": "uint64" }],
+    "name": "TermRemoved",
+    "type": "event"
+  },
+  {
+    "anonymous": false,
+    "inputs": [
+      { "indexed": true, "name": "id", "type": "uint64" },
+      { "indexed": false, "name": "name", "type": "string" },
+      { "indexed": false, "name": "org_name", "type": "string" },
+      { "indexed": false, "name": "version", "type": "string" },
+      { "indexed": false, "name": "content_hash", "type": "uint256" },
+      { "indexed": false, "name": "manager", "type": "address" },
+      { "indexed": false, "name": "origin", "type": "address" }
+    ],
+    "name": "TermCreated",
+    "type": "event"
+  }
+]

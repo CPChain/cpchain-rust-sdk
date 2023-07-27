@@ -1,6 +1,6 @@
 use std::{future::Future, time, collections::HashMap};
 
-use web3::{contract::{tokens::Tokenize}, types::{TransactionRequest, TransactionReceipt, Bytes}, ethabi::{self}, api::{Eth}};
+use web3::{contract::tokens::Tokenize, types::{TransactionRequest, TransactionReceipt, Bytes}, ethabi::{self}, api::Eth};
 
 use crate::{CPCWeb3, types::{Options, TransactionParameters}, address::Address, error::StdError, accounts::Account, transport::CPCHttp};
 

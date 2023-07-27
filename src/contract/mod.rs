@@ -145,10 +145,14 @@ impl Contract {
     }
 
     pub async fn logs(&self, web3: &CPCWeb3, event_name: &str, from_block: Option<u64>, to_block: Option<u64>) -> Result<Vec<Log>, StdError> {
+        let sig = match self.event_sig(event_name) {
+            Some(sig) => sig,
+            None => return Err(format!("Not found event `{}`", event_name).into())
+        };
         let mut builder = FilterBuilder::default()
             .address(vec![self.address().h160])
             .topics(
-                Some(vec![self.event_sig(event_name).unwrap()]),
+                Some(vec![sig]),
                 None,
                 None,
                 None,
@@ -289,6 +293,19 @@ mod tests {
             include_bytes!("../../fixtures/contracts/Metacoin.abi"),
         );
         let events = c.events(&web3, "Transfer", Some(0), None).await.unwrap();
+        println!("{:?}", events);
+        println!("Length {:?}", events.len())
+    }
+
+    #[tokio::test]
+    async fn test_term_events() {
+        let web3 = CPCWeb3::new("https://civilian.cpchain.io").unwrap();
+        let c = Contract::from_address(
+            &web3,
+            &Address::from_str("0xd6382b0757C691cb502D0b47264F70d50F236226").unwrap(),
+            include_bytes!("../../fixtures/contracts/Term.abi.json"),
+        );
+        let events = c.events(&web3, "TermCreated", Some(0), None).await.unwrap();
         println!("{:?}", events);
         println!("Length {:?}", events.len())
     }
