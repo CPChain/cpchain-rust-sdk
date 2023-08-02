@@ -309,4 +309,17 @@ mod tests {
         println!("{:?}", events);
         println!("Length {:?}", events.len())
     }
+
+    #[tokio::test]
+    async fn test_roadmap_events() {
+        let web3 = CPCWeb3::new("https://civilian.cpchain.io").unwrap();
+        let c = Contract::from_address(
+            &web3,
+            &Address::from_str("0xc3aA832c3ba3c005b93E35850874e3fD212a832C").unwrap(),
+            include_bytes!("../../fixtures/contracts/Roadmap.abi.json"),
+        );
+        let events = c.events(&web3, "RegisterRoadmap", Some(0), None).await.unwrap();
+        println!("{:?}", events);
+        println!("Length {:?}", events.len())
+    }
 }

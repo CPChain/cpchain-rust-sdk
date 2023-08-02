@@ -15,7 +15,8 @@ pub enum EventParam {
     I8(i8),
     I32(i32),
     String(String),
-    Bool(bool)
+    Bool(bool),
+    Array(Vec<EventParam>)
 }
 
 impl EventParam {
@@ -61,7 +62,7 @@ impl EventParam {
         bytes
     }
     pub fn from_bytes(param: &ethabi::EventParam, index: usize, bytes: &Vec<u8>) -> Result<Self, StdError> {
-        match param.kind {
+        match param.kind.clone() {
             ParamType::Address => {
                 Ok(EventParam::Address(H160::from(H256::from_slice(EventParam::take_index(&index, bytes)))))
             }
@@ -114,6 +115,50 @@ impl EventParam {
             ParamType::Bool => {
                 Ok(EventParam::Bool(U256::from(EventParam::take_index(&index, bytes)).as_usize() == 1))
             }
+            ParamType::Array(arr) => {
+                // 拿到偏移量
+                let begin = U256::from(EventParam::take_index(&index, bytes));
+                // 拿到数组元素个数
+                let length = U256::from(EventParam::take_index2(begin.as_usize(), bytes));
+                let length = length.as_usize();
+                match arr.as_ref() {
+                    ParamType::FixedArray(_t, size) => {
+                        // 获取第二维数组的 begin
+                        let mut results: Vec<EventParam> = vec![];
+                        for i in 0..length {
+                            // 拿到相对偏移量
+                            let b1 = U256::from(EventParam::take_index2(begin.as_usize() + (32 * (i + 1)), bytes));
+                            // 拿到真实偏移量
+                            let b1 = begin.as_usize() + (32 * ( 1)) + b1.as_usize();
+                            match _t.as_ref() {
+                                ParamType::String => {
+                                    let mut r: Vec<EventParam> = vec![];
+                                    for j in 0..size.clone() {
+                                        // 拿到具体元素偏移量
+                                        let b2 = U256::from(EventParam::take_index2(b1 + (32 * j), bytes));
+                                        let b2 = b1 + b2.as_usize();
+                                        // 拿到具体元素长度
+                                        let length = U256::from(EventParam::take_index2(b2, bytes));
+                                        let length = length.as_usize();
+                                        let start = b2 + 32;
+                                        let bytes = &bytes[start..(start + length)];
+                                        let s = String::from_utf8_lossy(bytes).to_string();
+                                        r.push(EventParam::String(s));
+                                    }
+                                    results.push(EventParam::Array(r));
+                                },
+                                _ => {
+                                    return Err(format!("Unsupported event parameter's kind: {:?} of an event fixed array", param.kind).into())
+                                }
+                            };
+                        }
+                        return Ok(EventParam::Array(results))
+                    },
+                    _ => {
+                        return Err(format!("Unsupported event parameter's kind: {:?} of an event array", param.kind).into())
+                    }
+                };
+            }
             _ => Err(format!("Unsupported event parameter's kind: {:?}", param.kind).into())
         }
     }
@@ -122,6 +167,7 @@ impl EventParam {
 /// Event
 /// 
 /// https://goethereumbook.org/zh/event-read/
+/// https://docs.soliditylang.org/zh/v0.8.16/abi-spec.html
 #[derive(Debug, Clone)]
 pub struct Event {
     pub name: String,
@@ -171,6 +217,7 @@ impl Event {
     pub fn from_logs(event: &ethabi::Event, logs: &Vec<Log>) -> Result<Vec<Self>, StdError> {
         let mut events = Vec::new();
         for log in logs.iter() {
+            // println!("--->>> {}", hex::encode(&log.data.0.clone().to_vec()));
             events.push(Event::from(event, &log)?);
         }
         Ok(events)

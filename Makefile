@@ -6,4 +6,4 @@ package:
 	@cargo package
 
 publish:
-	@cargo publish
+	@cargo publish --registry crates-io
