@@ -61,8 +61,8 @@ impl EventParam {
         let bytes: &[u8] = &bytes[begin..end];
         bytes
     }
-    pub fn from_bytes(param: &ethabi::EventParam, index: usize, bytes: &Vec<u8>) -> Result<Self, StdError> {
-        match param.kind.clone() {
+    pub fn from_bytes(param: &ParamType, index: usize, bytes: &Vec<u8>) -> Result<Self, StdError> {
+        match param.clone() {
             ParamType::Address => {
                 Ok(EventParam::Address(H160::from(H256::from_slice(EventParam::take_index(&index, bytes)))))
             }
@@ -148,18 +148,28 @@ impl EventParam {
                                     results.push(EventParam::Array(r));
                                 },
                                 _ => {
-                                    return Err(format!("Unsupported event parameter's kind: {:?} of an event fixed array", param.kind).into())
+                                    return Err(format!("Unsupported event parameter's kind: {:?} of an event fixed array", param).into())
                                 }
                             };
                         }
                         return Ok(EventParam::Array(results))
                     },
+                    ParamType::String => {
+                        let start = begin.as_usize() + 32;
+                        let bytes2 = &bytes[start..].to_vec();
+                        let mut results: Vec<EventParam> = vec![];
+                        for i in 0..length {
+                            let r = EventParam::from_bytes(&ParamType::String, i, bytes2)?;
+                            results.push(r);
+                        }
+                        return Ok(EventParam::Array(results));
+                    },
                     _ => {
-                        return Err(format!("Unsupported event parameter's kind: {:?} of an event array", param.kind).into())
+                        return Err(format!("Unsupported event parameter's kind: {:?} of an event array", param).into())
                     }
                 };
             }
-            _ => Err(format!("Unsupported event parameter's kind: {:?}", param.kind).into())
+            _ => Err(format!("Unsupported event parameter's kind: {:?}", param).into())
         }
     }
 }
@@ -198,7 +208,7 @@ impl Event {
         while current < event.inputs.len() {
             let param = &event.inputs[current];
             let index = current + 1 - log.topics.len();
-            let param = EventParam::from_bytes(param, index, data)?;
+            let param = EventParam::from_bytes(&param.kind, index, data)?;
             params.push(param);
             current += 1;
         }

@@ -322,4 +322,19 @@ mod tests {
         println!("{:?}", events);
         println!("Length {:?}", events.len())
     }
+
+    #[tokio::test]
+    async fn test_one_dime_events() {
+        // 一维数组测试
+        let web3 = CPCWeb3::new("https://civilian.cpchain.io").unwrap();
+        let abi = "[{\"anonymous\":false,\"inputs\":[{\"indexed\":false,\"name\":\"xx\",\"type\":\"string[]\"}],\"name\":\"E1\",\"type\":\"event\"}]".as_bytes();
+        let c = Contract::from_address(
+            &web3,
+            &Address::from_str("0x1DaD5F2372B463eD0Db6A8c0ba3B0b6E7196fb18").unwrap(),
+            abi
+        );
+        let events = c.events(&web3, "E1", Some(0), None).await.unwrap();
+        println!("{:?}", events);
+        println!("Length {:?}", events.len())
+    }
 }
