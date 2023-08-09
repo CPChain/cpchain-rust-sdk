@@ -3,13 +3,21 @@ use crate::types;
 pub struct TypeHelper {}
 
 impl TypeHelper {
-    pub fn p_h256_2_c_h160(v: &primitive_types::H160) -> types::H160 {
+    pub fn p_h256_2_c(v: &primitive_types::H160) -> types::H160 {
         types::H160::from_slice(v.as_bytes())
     }
-    pub fn p_u256_2_c_u256(v: &primitive_types::U256) -> types::U256 {
+    pub fn p_u256_2_c(v: &primitive_types::U256) -> types::U256 {
         let mut bytes: [u8; 32] = [0; 32];
         v.to_big_endian(&mut bytes);
         types::U256::from_big_endian(&bytes)
+    }
+    pub fn c_h256_2_p(v: &types::H160) -> primitive_types::H160 {
+        primitive_types::H160::from_slice(v.as_bytes())
+    }
+    pub fn c_u256_2_p(v: &types::U256) -> primitive_types::U256 {
+        let mut bytes: [u8; 32] = [0; 32];
+        v.to_big_endian(&mut bytes);
+        primitive_types::U256::from_big_endian(&bytes)
     }
 }
 
@@ -23,7 +31,7 @@ mod tests {
             let data = utils::hex_to_bytes(s).unwrap();
             let h1 = H160::from_slice(data.as_slice());
             let h160 = primitive_types::H160::from_slice(data.as_slice());
-            let h2 = TypeHelper::p_h256_2_c_h160(&h160);
+            let h2 = TypeHelper::p_h256_2_c(&h160);
             assert_eq!(h1, h2);
         }
         it("0x5aAeb6053F3E94C9b9A09f33669435E7Ef1BeAed");
@@ -37,7 +45,7 @@ mod tests {
         fn it(v: u128) {
             let h1 = U256::from(v);
             let h = primitive_types::U256::from(v);
-            let h2 = TypeHelper::p_u256_2_c_u256(&h);
+            let h2 = TypeHelper::p_u256_2_c(&h);
             assert_eq!(h1, h2);
         }
         it(1000);
