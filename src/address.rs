@@ -1,7 +1,7 @@
 use std::fmt::Display;
 
 use serde::{Serialize, Deserialize};
-use web3::{types::H160};
+use web3::types::H160;
 
 use crate::utils::{self, checksum_encode};
 

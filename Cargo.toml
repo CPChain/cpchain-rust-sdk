@@ -1,6 +1,6 @@
 [package]
 name = "cpchain-rust-sdk"
-version = "0.1.17"
+version = "0.1.18"
 edition = "2021"
 homepage = "https://cpchain.io"
 repository = "https://github.com/cpchain/cpchain-rust-sdk"
@@ -13,8 +13,6 @@ include = [
 ]
 
 [features]
-default = ["web3"]
-web3 = []
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
