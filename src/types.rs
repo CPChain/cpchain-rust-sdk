@@ -1,5 +1,8 @@
+#[cfg(feature="web3")]
 use rlp::RlpStream;
+#[cfg(feature="web3")]
 use serde::{Deserialize, Serialize};
+#[cfg(feature="web3")]
 use web3::{signing::{self, Signature}, types::{SignedTransaction, CallRequest}};
 
 pub type Result = web3::Result;
@@ -16,6 +19,7 @@ pub type TransactionLog = web3::types::Log;
 pub type BlockWithHash = web3::types::Block<H256>;
 pub type BlockWithTx = web3::types::Block<Transaction>;
 
+#[cfg(feature="web3")]
 #[derive(Debug, Clone, Deserialize, Serialize)]
 pub struct TransactionParameters {
     /// Transaction type
@@ -38,6 +42,7 @@ pub struct TransactionParameters {
     pub chain_id: u64,
 }
 
+#[cfg(feature="web3")]
 impl TransactionParameters {
     pub fn new(
         chain_id: u64,

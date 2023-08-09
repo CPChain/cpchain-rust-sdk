@@ -1,1 +1,12 @@
-[{"anonymous":false,"inputs":[{"indexed":true,"name":"appId","type":"uint64"},{"indexed":false,"name":"sender","type":"address"},{"indexed":false,"name":"nodes","type":"string[2][]"}],"name":"RegisterRoadmap","type":"event"}]
+[
+  {
+    "anonymous": false,
+    "inputs": [
+      { "indexed": true, "name": "appId", "type": "uint64" },
+      { "indexed": false, "name": "sender", "type": "address" },
+      { "indexed": false, "name": "nodes", "type": "string[2][]" }
+    ],
+    "name": "RegisterRoadmap",
+    "type": "event"
+  }
+]

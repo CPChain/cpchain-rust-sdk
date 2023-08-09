@@ -1,6 +1,6 @@
 [package]
 name = "cpchain-rust-sdk"
-version = "0.1.16"
+version = "0.1.17"
 edition = "2021"
 homepage = "https://cpchain.io"
 repository = "https://github.com/cpchain/cpchain-rust-sdk"
@@ -11,6 +11,10 @@ include = [
     "Cargo.toml",
     "README.md",
 ]
+
+[features]
+default = ["web3"]
+web3 = []
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
@@ -41,3 +45,4 @@ scrypt = {version="0.10.0", default-features = false}
 aes = "0.8.2"
 ctr = "0.9.2"
 rlp = "0.5.2"
+primitive-types = { version = "0.12.1", features = ["scale-info", "serde"] }
